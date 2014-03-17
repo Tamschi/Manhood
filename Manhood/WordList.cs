@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
-using Randlib;
 
 namespace Manhood
 {
@@ -119,7 +118,7 @@ namespace Manhood
             return true;
         }
 
-        public void RandomizeDistWeights(MarkovRandom rand, int factor)
+        public void RandomizeDistWeights(Random rand, int factor)
         {
             for (int i = 0; i < this.DistWeights.Length; i++)
             {
@@ -147,7 +146,7 @@ namespace Manhood
             return -1;
         }
 
-        public int GetRandomIndex(MarkovRandom rand, string className)
+        public int GetRandomIndex(Random rand, string className)
         {
             if (className == "")
             {
@@ -179,7 +178,7 @@ namespace Manhood
             return Format(Words[index][subIndex], format);
         }
 
-        public string GetRandomWord(MarkovRandom rand, string subtype, string className, WordFormat format)
+        public string GetRandomWord(Random rand, string subtype, string className, WordFormat format)
         {           
             int subIndex = LookForSubtype(subtype);
             if (subIndex == -1)
@@ -205,7 +204,7 @@ namespace Manhood
             }
         }
 
-        public string GetRandomWordMultiClass(MarkovRandom rand, string subtype, WordFormat format, params string[] classNames)
+        public string GetRandomWordMultiClass(Random rand, string subtype, WordFormat format, params string[] classNames)
         {
             int subIndex = LookForSubtype(subtype);
             if (subIndex == -1)
@@ -254,7 +253,7 @@ namespace Manhood
             return words;
         }
 
-        private int PickByWeight(List<int> items, MarkovRandom rand)
+        private int PickByWeight(List<int> items, Random rand)
         {
             int total = TotalWeights(items);
             int randomNumber = rand.Next(0, total);
@@ -272,7 +271,7 @@ namespace Manhood
             return selectedIndex;
         }
 
-        private int PickByWeight(string className, MarkovRandom rand)
+        private int PickByWeight(string className, Random rand)
         {
             int total = TotalWeights(className);
             int randomNumber = rand.Next(0, total);

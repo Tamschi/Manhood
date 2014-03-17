@@ -5,7 +5,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.IO;
 using System.Globalization;
-using Randlib;
 
 namespace Manhood
 {
@@ -184,7 +183,7 @@ namespace Manhood
             get { return errorLog; }
         }
 
-        public void AssignGlobals(MarkovRandom rand)
+        public void AssignGlobals(Random rand)
         {
             foreach (KeyValuePair<string, string> entry in globalBank)
             {
@@ -207,7 +206,7 @@ namespace Manhood
             }
         }
 
-        private void ChangeWeights(MarkovRandom rand, int distSelect)
+        private void ChangeWeights(Random rand, int distSelect)
         {
             foreach (KeyValuePair<char, WordList> kvp in wordBank)
             {
@@ -222,7 +221,7 @@ namespace Manhood
             }
         }
 
-        private void GenerateFromOutline(MarkovRandom rand, OutputCollection ogc, List<string> outlines)
+        private void GenerateFromOutline(Random rand, OutputCollection ogc, List<string> outlines)
         {
             errorLog.Clear();
             string outline = outlines[rand.Next(0, outlines.Count)];
@@ -255,7 +254,7 @@ namespace Manhood
             }
         }
 
-        public string GenerateFromSymbol(MarkovRandom rand, string type)
+        public string GenerateFromSymbol(Random rand, string type)
         {
             errorLog.Clear();
             var ogc = new OutputCollection();
@@ -265,7 +264,7 @@ namespace Manhood
             return ogc.ToString();
         }
 
-        public string GenerateFromPattern(MarkovRandom random, string pattern)
+        public string GenerateFromPattern(Random random, string pattern)
         {
             errorLog.Clear();
             var ogc = new OutputCollection();
@@ -275,7 +274,7 @@ namespace Manhood
             return ogc.ToString();
         }
 
-        public OutputCollection GenerateOGC(MarkovRandom random, string pattern)
+        public OutputCollection GenerateOGC(Random random, string pattern)
         {
             errorLog.Clear();
             var ogc = new OutputCollection();
@@ -420,7 +419,7 @@ namespace Manhood
             errorLog.AppendFormat("WARNING (Line {0}, Col {1}): {2}\n", line, col, problem);
         }
 
-        private void Interpret(MarkovRandom rand, OutputCollection stream, string rawPattern)
+        private void Interpret(Random rand, OutputCollection stream, string rawPattern)
         {
             CharReader reader = new CharReader(TranslateDefs(rawPattern, "", ""), 0);
 
@@ -572,7 +571,7 @@ namespace Manhood
                     selectorUniformIDs.Add(currentUniformID);
                     if (currentUniformID > -1)
                     {
-                        MarkovRandom uniRand = new MarkovRandom(uniformSeedSalt + currentUniformID);
+                        Random uniRand = new Random(uniformSeedSalt + currentUniformID);
                         reader.Position = startIndices[uniRand.Next(0, startIndices.Length)];
                     }
                     else
@@ -1095,7 +1094,7 @@ namespace Manhood
             }
         }
 
-        private void GenerateFromPattern(MarkovRandom rand, OutputCollection ogc, PatternList patterns)
+        private void GenerateFromPattern(Random rand, OutputCollection ogc, PatternList patterns)
         {
             int which = rand.Next(0, patterns.Patterns.Length);
             string rawPattern = patterns.Patterns[which];

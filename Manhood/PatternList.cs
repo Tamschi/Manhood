@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
-using Randlib;
 
 namespace Manhood
 {
@@ -101,7 +100,7 @@ namespace Manhood
             this.Patterns = patterns.ToArray();
         }
 
-        public string GetPattern(MarkovRandom r)
+        public string GetPattern(Random r)
         {
             return this.Patterns[r.Next(0, this.Patterns.Length)];
         }
