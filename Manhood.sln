@@ -5,6 +5,8 @@ VisualStudioVersion = 12.0.21005.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Manhood", "Manhood\Manhood.csproj", "{CF061B7D-5A25-480A-818A-8BAD2BEC9BEC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ManConsole", "ManConsole\ManConsole.csproj", "{4147C881-D010-473F-B409-7279D8ABA0C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,6 +20,12 @@ Global
 		{CF061B7D-5A25-480A-818A-8BAD2BEC9BEC}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CF061B7D-5A25-480A-818A-8BAD2BEC9BEC}.Vanilla|Any CPU.ActiveCfg = Vanilla|Any CPU
 		{CF061B7D-5A25-480A-818A-8BAD2BEC9BEC}.Vanilla|Any CPU.Build.0 = Vanilla|Any CPU
+		{4147C881-D010-473F-B409-7279D8ABA0C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4147C881-D010-473F-B409-7279D8ABA0C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4147C881-D010-473F-B409-7279D8ABA0C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4147C881-D010-473F-B409-7279D8ABA0C1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4147C881-D010-473F-B409-7279D8ABA0C1}.Vanilla|Any CPU.ActiveCfg = Release|Any CPU
+		{4147C881-D010-473F-B409-7279D8ABA0C1}.Vanilla|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

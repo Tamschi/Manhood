@@ -462,6 +462,7 @@ namespace Manhood
                     buffer = reader.ReadChar().ToString();
                     goto dobuffer;
                 }
+
                 #region Output groups
                 else if (c == '<')
                 {
@@ -761,7 +762,7 @@ namespace Manhood
                     }
                     string firstParam = reader.ReadString(rightBracket - reader.Position);
                     reader.ReadChar(); // skip ]
-                    if (func == "l.set")
+                    if (func == "ls")
                     {
                         if (!vflags.Contains(firstParam))
                         {
@@ -769,7 +770,7 @@ namespace Manhood
                         }
                         continue;
                     }
-                    else if (func == "l.unset")
+                    else if (func == "lu")
                     {
                         if (vflags.Contains(firstParam))
                         {
@@ -777,7 +778,7 @@ namespace Manhood
                         }
                         continue;
                     }
-                    else if (func == "l.if")
+                    else if (func == "l?")
                     {
                         if (reader.ReadChar() != '[')
                         {
@@ -796,7 +797,7 @@ namespace Manhood
                         }
                         continue;
                     }
-                    else if (func == "l.ifnot")
+                    else if (func == "l!")
                     {
                         if (reader.ReadChar() != '[')
                         {
@@ -815,7 +816,7 @@ namespace Manhood
                         }
                         continue;
                     }
-                    else if (func == "g.set")
+                    else if (func == "gs")
                     {
                         if (!flags.Contains(firstParam))
                         {
@@ -823,7 +824,7 @@ namespace Manhood
                         }
                         continue;
                     }
-                    else if (func == "g.unset")
+                    else if (func == "gu")
                     {
                         if (flags.Contains(firstParam))
                         {
@@ -831,7 +832,7 @@ namespace Manhood
                         }
                         continue;
                     }
-                    else if (func == "g.if")
+                    else if (func == "g?")
                     {
                         if (reader.ReadChar() != '[')
                         {
@@ -850,7 +851,7 @@ namespace Manhood
                         }
                         continue;
                     }
-                    else if (func == "g.ifnot")
+                    else if (func == "g!")
                     {
                         if (reader.ReadChar() != '[')
                         {
@@ -1074,20 +1075,36 @@ namespace Manhood
 
             dobuffer:
 
-                if (outputGroups[outputGroups.Count - 1].Visibility == GroupVisibility.Private)
+                int groupCount = outputGroups.Count;
+                var currentGroup = outputGroups[groupCount - 1];
+                var gVis = currentGroup.Visibility;
+
+                switch(gVis)
                 {
-                    stream[outputGroups[outputGroups.Count - 1].Name].Append(buffer);
-                }
-                else
-                {
-                    foreach (var group in outputGroups)
-                    {
-                        if (group.Name == "main" && outputGroups.Any(gi => gi.Name != "main" && gi.Visibility == GroupVisibility.Internal))
+                    case GroupVisibility.Public:
                         {
-                            continue;
+                            foreach(var group in outputGroups)
+                            {
+                                stream[group.Name].Append(buffer);
+                            }
                         }
-                        stream[group.Name].Append(buffer);
-                    }
+                        break;
+                    case GroupVisibility.Internal:
+                        {
+                            OutputGroup group = null;
+                            for(int i = 0; i < outputGroups.Count; i++)
+                            {
+                                group = outputGroups[groupCount - (i + 1)];
+                                if (group.Visibility != GroupVisibility.Internal) break;
+                                stream[group.Name].Append(buffer);
+                            }
+                        }
+                        break;
+                    case GroupVisibility.Private:
+                        {
+                            stream[currentGroup.Name].Append(buffer);
+                        }
+                        break;
                 }
 
                 buffer = "";
