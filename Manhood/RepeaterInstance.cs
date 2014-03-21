@@ -52,9 +52,14 @@ namespace Manhood
             get { return _separator; }
         }
 
-        public int Loops
+        public int MaxIterations
         {
             get { return _loops; }
+        }
+
+        public int Iterations
+        {
+            get { return _currentIteration; }
         }
 
         public bool OnSeparator

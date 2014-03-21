@@ -16,7 +16,8 @@ namespace Manhood
         Dictionary<string, string> globalBank;
         Dictionary<string, string> globalValues;
         Dictionary<string, string> patternScriptBank;
-        List<string> flags;
+        List<string> flagsGlobal;
+        List<string> flagsLocal;
         List<string> oIntros; // Introduction paragraphs
         List<string> oBodies; // Body paragraphs
         List<string> oEndings; // Ending paragraphs
@@ -38,7 +39,8 @@ namespace Manhood
         public ManEngine(string[] mount)
         {
             errorLog = new StringBuilder();
-            flags = new List<string>();
+            flagsGlobal = new List<string>();
+            flagsLocal = new List<string>();
             wordBank = new Dictionary<char, WordList>();
             patternBank = new Dictionary<string, PatternList>();
             macroBank = new Dictionary<string, string>();
@@ -449,9 +451,6 @@ namespace Manhood
             // Repeater stuff
             List<RepeaterInstance> repeaters = new List<RepeaterInstance>();
 
-            // Volatile flags
-            List<string> vflags = new List<string>();
-
             while (!reader.EndOfString) // Read through pattern until we reach the end
             {
                 prev = c;
@@ -707,14 +706,29 @@ namespace Manhood
                     repeaters.Add(new RepeaterInstance(pStart, pEnd, sepIndex, sepEnd, strSepParameter, constantParam));
 
                     reader.Position = pStart;
+
+                    SetLocalFlag("odd_" + repeaters.Count);
+                    SetLocalFlag("first_" + repeaters.Count);
                 }
                 else if (c == ']' && repeaters.Count > 0) // End of repeater iteration?
                 {
-                    int last = repeaters.Count - 1;
+                    int repeaterCount = repeaters.Count;
+                    int last = repeaterCount - 1;
                     RepeaterInstance rep = repeaters[last];
                     if (reader.Position - 1 != rep.ContentEndIndex && reader.Position - 1 != rep.SeparatorEndIndex)
                     {
                         continue;
+                    }
+
+                    if (repeaters[last].Iterations == 0)
+                    {
+                        SetLocalFlag("first_" + repeaterCount);
+                        UnsetLocalFlag("last_" + repeaterCount);
+                    }
+                    else if (repeaters[last].Iterations == repeaters[last].MaxIterations - 1)
+                    {
+                        UnsetLocalFlag("first_" + repeaterCount);
+                        SetLocalFlag("last_" + repeaterCount);
                     }
 
                     if (rep.OnSeparator) // Currently writing separator?
@@ -726,11 +740,24 @@ namespace Manhood
                     {                        
                         if (repeaters[last].Elapse())
                         {
+                            UnsetLocalFlag("odd_" + repeaterCount);
+                            UnsetLocalFlag("even_" + repeaterCount);
                             repeaters.RemoveAt(last); // Remove the last repeater if it's finished
                             continue;
                         }
                         else
                         {
+                            if ((repeaters[last].Iterations + 1) % 2 == 0)
+                            {
+                                UnsetLocalFlag("odd_" + repeaterCount);
+                                SetLocalFlag("even_" + repeaterCount);
+                            }
+                            else
+                            {
+                                SetLocalFlag("odd_" + repeaterCount);
+                                UnsetLocalFlag("even_" + repeaterCount);
+                            }
+
                             rep.OnSeparator = true;
                             reader.Position = rep.SeparatorStartIndex; // Add separator if not
                         }
@@ -764,18 +791,12 @@ namespace Manhood
                     reader.ReadChar(); // skip ]
                     if (func == "ls")
                     {
-                        if (!vflags.Contains(firstParam))
-                        {
-                            vflags.Add(firstParam);
-                        }
+                        SetLocalFlag(firstParam);
                         continue;
                     }
                     else if (func == "lu")
                     {
-                        if (vflags.Contains(firstParam))
-                        {
-                            vflags.Remove(firstParam);
-                        }
+                        UnsetLocalFlag(firstParam);
                         continue;
                     }
                     else if (func == "l?")
@@ -791,7 +812,7 @@ namespace Manhood
                             Error("Missing ']' in IF body.", reader);
                             return;
                         }
-                        if (!vflags.Contains(firstParam))
+                        if (!CheckLocalFlag(firstParam))
                         {
                             reader.Position = rightBodyBracket;
                         }
@@ -810,7 +831,7 @@ namespace Manhood
                             Error("Missing ']' in IF body.", reader);
                             return;
                         }
-                        if (vflags.Contains(firstParam))
+                        if (CheckLocalFlag(firstParam))
                         {
                             reader.Position = rightBodyBracket;
                         }
@@ -818,18 +839,12 @@ namespace Manhood
                     }
                     else if (func == "gs")
                     {
-                        if (!flags.Contains(firstParam))
-                        {
-                            flags.Add(firstParam);
-                        }
+                        SetGlobalFlag(firstParam);
                         continue;
                     }
                     else if (func == "gu")
                     {
-                        if (flags.Contains(firstParam))
-                        {
-                            flags.Remove(firstParam);
-                        }
+                        UnsetGlobalFlag(firstParam);
                         continue;
                     }
                     else if (func == "g?")
@@ -845,7 +860,7 @@ namespace Manhood
                             Error("Missing ']' in IF body.", reader);
                             return;
                         }
-                        if (!flags.Contains(firstParam))
+                        if (!CheckGlobalFlag(firstParam))
                         {
                             reader.Position = rightBodyBracket;
                         }
@@ -864,7 +879,7 @@ namespace Manhood
                             Error("Missing ']' in IF body.", reader);
                             return;
                         }
-                        if (flags.Contains(firstParam))
+                        if (CheckGlobalFlag(firstParam))
                         {
                             reader.Position = rightBodyBracket;
                         }
@@ -1109,6 +1124,49 @@ namespace Manhood
 
                 buffer = "";
             }
+            flagsLocal.Clear();
+        }
+
+        private void SetLocalFlag(string flagName)
+        {
+            if (!flagsLocal.Contains(flagName))
+            {
+                flagsLocal.Add(flagName);
+            }
+        }
+
+        private void UnsetLocalFlag(string flagName)
+        {
+            if (flagsLocal.Contains(flagName))
+            {
+                flagsLocal.Remove(flagName);
+            }
+        }
+
+        private bool CheckLocalFlag(string flagName)
+        {
+            return flagsLocal.Contains(flagName);
+        }
+
+        public void SetGlobalFlag(string flagName)
+        {
+            if (!flagsGlobal.Contains(flagName))
+            {
+                flagsGlobal.Add(flagName);
+            }
+        }
+
+        public void UnsetGlobalFlag(string flagName)
+        {
+            if (flagsGlobal.Contains(flagName))
+            {
+                flagsGlobal.Remove(flagName);
+            }
+        }
+
+        public bool CheckGlobalFlag(string flagName)
+        {
+            return flagsGlobal.Contains(flagName);
         }
 
         private void GenerateFromPattern(Random rand, OutputCollection ogc, PatternList patterns)
