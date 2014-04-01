@@ -720,14 +720,14 @@ namespace Manhood
                         continue;
                     }
 
+                    UnsetLocalFlag("last_" + repeaterCount);
+                    UnsetLocalFlag("first_" + repeaterCount);
                     if (repeaters[last].Iterations == 0)
                     {
                         SetLocalFlag("first_" + repeaterCount);
-                        UnsetLocalFlag("last_" + repeaterCount);
                     }
                     else if (repeaters[last].Iterations == repeaters[last].MaxIterations - 1)
                     {
-                        UnsetLocalFlag("first_" + repeaterCount);
                         SetLocalFlag("last_" + repeaterCount);
                     }
 
