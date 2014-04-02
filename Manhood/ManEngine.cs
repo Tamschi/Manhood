@@ -30,11 +30,11 @@ namespace Manhood
         const string patWordCallLegacy = @"((?:\[)(?<class>\w+)(?:\]))?(?<symbol>\w)((?:\[)(?<subtype>\w+)(?:\]))?((?:\<)(?<carrier>[\w\s]+)(?:\>))?";
 
         // +s[subtype of class for carrier]
-        const string patWordCallModern = @"((?<symbol>\w)(?:\[\s*(?<subtype>\w+)?(\s*of\s*(?<class>[\w\&\,]+))?(\s*for\s*((?<carrier>\w+)|(?:\"")(?<carrier>[\w\s]+)(?:\"")))?\s*\])?)";
+        const string patWordCallModern = @"((?<symbol>\w)(?:\[\s*(?<subtype>\w+)?(\s*of\s*(?<class>[\w\&\,]+))?(\s*for\s*((?<carrier>\w+)|(?:\"")(?<carrier>[\w\s]+)(?:\"")))?\s*\])?)([^\<][^\>]|$)";
 
-        const string patWordCall = @"(" + patWordCallModern + "|" + patWordCallLegacy + ")";
+        static readonly Regex regWordCallLegacy = new Regex(patWordCallLegacy, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
 
-        static readonly Regex regWordCall = new Regex(patWordCall, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
+        static readonly Regex regWordCallModern = new Regex(patWordCallModern, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
 
         public ManEngine(string[] mount)
         {
@@ -896,17 +896,21 @@ namespace Manhood
                 #region Random word
                 else if (c == '+') // Random word
                 {
-                    var match = regWordCall.Match(reader.Source, reader.Position);
+                    var match = regWordCallModern.Match(reader.Source, reader.Position);
                     if (!(match.Success && match.Index == reader.Position))
                     {
-                        Warning("Invalid word call", reader);
-                        continue;
+                        match = regWordCallLegacy.Match(reader.Source, reader.Position); // Fall back to legacy and re-test
+                        if (!(match.Success && match.Index == reader.Position))
+                        {
+                            Warning("Invalid word call", reader);
+                            continue;
+                        }
                     }
 
                     var groups = match.Groups;
                     string className = groups["class"].Value.Trim();
                     string subtype = groups["subtype"].Value.Trim();
-                    string carrier = groups["carrier"].Value.Trim();
+                    string carrier = groups["carrier"].Value;
                     char symbol = groups["symbol"].Value[0];
 
                     reader.Position = match.Index + match.Length;

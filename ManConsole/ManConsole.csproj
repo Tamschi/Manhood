@@ -32,8 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Manhood">
-      <HintPath>..\Manhood\bin\Debug\Manhood.dll</HintPath>
+    <Reference Include="Manhood, Version=1.0.5192.34804, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Manhood\bin\Release\Manhood.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
