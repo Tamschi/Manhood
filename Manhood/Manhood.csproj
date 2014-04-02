@@ -56,6 +56,7 @@
   <ItemGroup>
     <Compile Include="CharReader.cs" />
     <Compile Include="Extensions.cs" />
+    <Compile Include="ManRandom.cs" />
     <Compile Include="OutputGroup.cs" />
     <Compile Include="ManEngine.cs" />
     <Compile Include="OutputCollection.cs" />

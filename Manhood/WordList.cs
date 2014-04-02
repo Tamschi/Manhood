@@ -117,7 +117,7 @@ namespace Manhood
             return true;
         }
 
-        public void RandomizeDistWeights(Random rand, int factor)
+        public void RandomizeDistWeights(ManRandom rand, int factor)
         {
             for (int i = 0; i < this.DistWeights.Length; i++)
             {
@@ -145,7 +145,7 @@ namespace Manhood
             return -1;
         }
 
-        public int GetRandomIndex(Random rand, string className)
+        public int GetRandomIndex(ManRandom rand, string className)
         {
             if (className == "")
             {
@@ -177,7 +177,7 @@ namespace Manhood
             return Format(Words[index][subIndex], format);
         }
 
-        public string GetRandomWord(Random rand, string subtype, string className, WordFormat format)
+        public string GetRandomWord(ManRandom rand, string subtype, string className, WordFormat format)
         {           
             int subIndex = LookForSubtype(subtype);
             if (subIndex == -1)
@@ -203,7 +203,7 @@ namespace Manhood
             }
         }
 
-        public string GetRandomWordMultiClass(Random rand, string subtype, WordFormat format, params string[] classNames)
+        public string GetRandomWordMultiClass(ManRandom rand, string subtype, WordFormat format, params string[] classNames)
         {
             int subIndex = LookForSubtype(subtype);
             if (subIndex == -1)
@@ -252,7 +252,7 @@ namespace Manhood
             return words;
         }
 
-        private int PickByWeight(List<int> items, Random rand)
+        private int PickByWeight(List<int> items, ManRandom rand)
         {
             int total = TotalWeights(items);
             int randomNumber = rand.Next(0, total);
@@ -270,7 +270,7 @@ namespace Manhood
             return selectedIndex;
         }
 
-        private int PickByWeight(string className, Random rand)
+        private int PickByWeight(string className, ManRandom rand)
         {
             int total = TotalWeights(className);
             int randomNumber = rand.Next(0, total);

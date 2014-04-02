@@ -100,7 +100,7 @@ namespace Manhood
             this.Patterns = patterns.ToArray();
         }
 
-        public string GetPattern(Random r)
+        public string GetPattern(ManRandom r)
         {
             return this.Patterns[r.Next(0, this.Patterns.Length)];
         }

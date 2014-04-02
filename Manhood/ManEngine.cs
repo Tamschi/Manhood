@@ -179,7 +179,7 @@ namespace Manhood
             get { return errorLog; }
         }
 
-        public void AssignGlobals(Random rand)
+        public void AssignGlobals(ManRandom rand)
         {
             foreach (KeyValuePair<string, string> entry in globalBank)
             {
@@ -202,7 +202,7 @@ namespace Manhood
             }
         }
 
-        private void ChangeWeights(Random rand, int distSelect)
+        private void ChangeWeights(ManRandom rand, int distSelect)
         {
             foreach (KeyValuePair<char, WordList> kvp in wordBank)
             {
@@ -217,7 +217,7 @@ namespace Manhood
             }
         }
 
-        public string GenerateFromSymbol(Random rand, string type)
+        public string GenerateFromSymbol(ManRandom rand, string type)
         {
             errorLog.Clear();
             var ogc = new OutputCollection();
@@ -227,7 +227,7 @@ namespace Manhood
             return ogc.ToString();
         }
 
-        public string GenerateFromPattern(Random random, string pattern)
+        public string GenerateFromPattern(ManRandom random, string pattern)
         {
             errorLog.Clear();
             var ogc = new OutputCollection();
@@ -237,7 +237,7 @@ namespace Manhood
             return ogc.ToString();
         }
 
-        public OutputCollection GenerateOGC(Random random, string pattern)
+        public OutputCollection GenerateOGC(ManRandom random, string pattern)
         {
             errorLog.Clear();
             var ogc = new OutputCollection();
@@ -382,7 +382,7 @@ namespace Manhood
             errorLog.AppendFormat("WARNING (Line {0}, Col {1}): {2}\n", line, col, problem);
         }
 
-        private void Interpret(Random rand, OutputCollection stream, string rawPattern)
+        private void Interpret(ManRandom rand, OutputCollection stream, string rawPattern)
         {
             CharReader reader = new CharReader(TranslateDefs(rawPattern, "", ""), 0);
 
@@ -532,7 +532,7 @@ namespace Manhood
                     selectorUniformIDs.Add(currentUniformID);
                     if (currentUniformID > -1)
                     {
-                        Random uniRand = new Random(uniformSeedSalt + currentUniformID);
+                        ManRandom uniRand = new ManRandom(uniformSeedSalt + currentUniformID);
                         reader.Position = startIndices[uniRand.Next(0, startIndices.Length)];
                     }
                     else
@@ -854,8 +854,8 @@ namespace Manhood
                 }
                 #endregion
 
-                #region Random word
-                else if (c == '+') // Random word
+                #region ManRandom word
+                else if (c == '+') // ManRandom word
                 {
                     var match = regWordCallModern.Match(reader.Source, reader.Position);
                     int endIndex = match.Groups["end"].Index;
@@ -986,7 +986,7 @@ namespace Manhood
                         currentFormat = WordFormat.AllCaps;
                     }
                 }
-                else if (c == '#') // Random number
+                else if (c == '#') // ManRandom number
                 {
                     if (reader.PeekChar() == '[')
                     {
@@ -1136,7 +1136,7 @@ namespace Manhood
             return flagsGlobal.Contains(flagName);
         }
 
-        private void GenerateFromPattern(Random rand, OutputCollection ogc, PatternList patterns)
+        private void GenerateFromPattern(ManRandom rand, OutputCollection ogc, PatternList patterns)
         {
             int which = rand.Next(0, patterns.Patterns.Length);
             string rawPattern = patterns.Patterns[which];
