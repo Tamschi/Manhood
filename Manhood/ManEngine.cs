@@ -18,9 +18,6 @@ namespace Manhood
         Dictionary<string, string> patternScriptBank;
         List<string> flagsGlobal;
         List<string> flagsLocal;
-        List<string> oIntros; // Introduction paragraphs
-        List<string> oBodies; // Body paragraphs
-        List<string> oEndings; // Ending paragraphs
         StringBuilder errorLog;
 
         private const uint magicMB = 0xBADDF001;
@@ -30,7 +27,7 @@ namespace Manhood
         const string patWordCallLegacy = @"((?:\[)(?<class>\w+)(?:\]))?(?<symbol>\w)((?:\[)(?<subtype>\w+)(?:\]))?((?:\<)(?<carrier>[\w\s]+)(?:\>))?";
 
         // +s[subtype of class for carrier]
-        const string patWordCallModern = @"((?<symbol>\w)(?:\[\s*(?<subtype>\w+)?(\s*of\s*(?<class>[\w\&\,]+))?(\s*for\s*((?<carrier>\w+)|(?:\"")(?<carrier>[\w\s]+)(?:\"")))?\s*\])?)([^\<][^\>]|$)";
+        const string patWordCallModern = @"((?<symbol>\w)(?:\[\s*(?<subtype>\w+)?(\s*of\s*(?<class>[\w\&\,]+))?(\s*for\s*((?<carrier>\w+)|(?:\"")(?<carrier>[\w\s]+)(?:\"")))?\s*\])?)(?<end>[^\<][^\>]|$)";
 
         static readonly Regex regWordCallLegacy = new Regex(patWordCallLegacy, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
 
@@ -46,9 +43,6 @@ namespace Manhood
             macroBank = new Dictionary<string, string>();
             globalBank = new Dictionary<string, string>();
             globalValues = new Dictionary<string, string>();
-            oIntros = new List<string>();
-            oBodies = new List<string>();
-            oEndings = new List<string>();
 
             patternScriptBank = new Dictionary<string, string>();
 
@@ -82,19 +76,19 @@ namespace Manhood
                     LoadGlobalList(reader.ReadStringArray());
                 }
 
-                if (reader.ReadBoolean()) // outlines
+                if (reader.ReadBoolean()) // outlines (deprecated)
                 {
                     if (reader.ReadBoolean())
                     {
-                        oIntros.AddRange(reader.ReadStringArray());
+                        reader.ReadStringArray();
                     }
                     if (reader.ReadBoolean())
                     {
-                        oBodies.AddRange(reader.ReadStringArray());
+                        reader.ReadStringArray();
                     }
                     if (reader.ReadBoolean())
                     {
-                        oEndings.AddRange(reader.ReadStringArray());
+                        reader.ReadStringArray();
                     }
                 }
 
@@ -220,39 +214,6 @@ namespace Manhood
             if (!patternBank.ContainsKey(type))
             {
                 throw new Exception("Required pattern list is missing: " + type);
-            }
-        }
-
-        private void GenerateFromOutline(Random rand, OutputCollection ogc, List<string> outlines)
-        {
-            errorLog.Clear();
-            string outline = outlines[rand.Next(0, outlines.Count)];
-
-            CharReader reader = new CharReader(outline, 0);
-
-            while (!reader.EndOfString)
-            {
-                char c = reader.ReadChar();
-
-                if (c == '|')
-                {
-                    ogc["main"].Append("\r\n");
-                }
-                else if (char.IsLetter(c))
-                {
-                    if (!patternBank.ContainsKey(c.ToString()))
-                    {
-                        ogc["main"].Append("<PatternNotFound: " + c.ToString() + ">");
-                    }
-                    else
-                    {
-                        GenerateFromPattern(rand, ogc, patternBank[c.ToString()]);
-                    }
-                }
-                else
-                {
-                    ogc["main"].Append(c);
-                }
             }
         }
 
@@ -897,9 +858,11 @@ namespace Manhood
                 else if (c == '+') // Random word
                 {
                     var match = regWordCallModern.Match(reader.Source, reader.Position);
+                    int endIndex = match.Groups["end"].Index;
                     if (!(match.Success && match.Index == reader.Position))
                     {
                         match = regWordCallLegacy.Match(reader.Source, reader.Position); // Fall back to legacy and re-test
+                        endIndex = match.Index + match.Length;
                         if (!(match.Success && match.Index == reader.Position))
                         {
                             Warning("Invalid word call", reader);
@@ -913,7 +876,7 @@ namespace Manhood
                     string carrier = groups["carrier"].Value;
                     char symbol = groups["symbol"].Value[0];
 
-                    reader.Position = match.Index + match.Length;
+                    reader.Position = endIndex;
 
                     if (!wordBank.ContainsKey(symbol)) // Make sure the symbol is registered
                     {

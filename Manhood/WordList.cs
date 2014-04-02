@@ -18,7 +18,6 @@ namespace Manhood
 
         public Dictionary<string, List<int>> Classes;
 
-
         public string[][] Words; //d1 = word, d2 = subtype        
 
         private int[] Weights;
