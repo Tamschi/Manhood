@@ -194,8 +194,8 @@ namespace Manhood
 
         private void GenerateFromPattern(ManRandom rand, OutputCollection ogc, PatternList patterns)
         {
-            int which = rand.Next(0, patterns.Patterns.Length);
-            string rawPattern = patterns.Patterns[which];
+            int which = rand.Next(0, patterns.Patterns.Count);
+            string rawPattern = patterns.Patterns[which].PatternText;
             Interpret(rand, ogc, rawPattern);
         }
 

@@ -8,21 +8,57 @@ namespace Manhood
 {
     public class WordList
     {
-        public char Symbol;
+        #region Non-public fields
+        internal char _symbol;
 
-        public string Title;
+        internal string _title;
 
-        public string Description;
+        internal string _description;
 
-        public string[] Subtypes;
+        internal string[] _subtypes;
 
-        public Dictionary<string, List<int>> Classes;
+        internal Dictionary<string, List<int>> _classes;
 
-        public string[][] Words; //d1 = word, d2 = subtype        
+        internal List<Word> _words;
 
-        private int[] Weights;
+        #endregion
 
-        private int[] DistWeights;
+        #region Properties
+
+        public char Symbol
+        {
+            get { return _symbol; }
+            set { _symbol = value; }
+        }
+
+        public string Title
+        {
+            get { return _title; }
+            set { _title = value; }
+        }
+
+        public string Description
+        {
+            get { return _description; }
+            set { _description = value; }
+        }
+
+        public List<Word> Words
+        {
+            get { return _words; }
+        }
+
+        public Dictionary<string, List<int>> Classes
+        {
+            get { return _classes; }
+        }
+
+        public string[] Subtypes
+        {
+            get { return _subtypes; }
+        }
+
+        #endregion
 
         public WordList(string path, ref int total)
         {
@@ -39,19 +75,18 @@ namespace Manhood
 
         private void Load(BinaryReader reader, ref int total) // Load binary
         {
-            this.Classes = new Dictionary<string, List<int>>();
-            this.Symbol = reader.ReadChar();
-            this.Title = reader.ReadLongString();
-            this.Description = reader.ReadLongString();
-            this.Subtypes = reader.ReadStringArray();
+            _classes = new Dictionary<string, List<int>>();
+            _symbol = reader.ReadChar();
+            _title = reader.ReadLongString();
+            _description = reader.ReadLongString();
+            _subtypes = reader.ReadStringArray();
+
             int itemCount = reader.ReadInt32();
 
-            this.Words = new string[itemCount][];
-            this.Weights = new int[itemCount];
-            this.DistWeights = new int[itemCount];
+            _words = new List<Word>(itemCount);
 
             for (int i = 0; i < itemCount; i++)
-            {
+            {                
                 int entryWeight = reader.ReadInt32();
                 string[] entrySubtypeArray = reader.ReadStringArray();
                 string[] entryClassArray = reader.ReadStringArray();
@@ -59,22 +94,22 @@ namespace Manhood
                 {
                     if (entrySubtypeArray.Length != this.Subtypes.Length)
                     {
-                        throw new InvalidDataException(this.Title + " - One or more entries do not have the correct number of items for the subtypes given.");
+                        throw new InvalidDataException(this._title + " - One or more entries do not have the correct number of items for the subtypes given.");
                     }
                 }
                 foreach (string entryClassName in entryClassArray)
                 {
                     if (entryClassName != "")
                     {
-                        if (!this.Classes.ContainsKey(entryClassName))
+                        if (!this._classes.ContainsKey(entryClassName))
                         {
-                            this.Classes.Add(entryClassName, new List<int>());
+                            this._classes.Add(entryClassName, new List<int>());
                         }
-                        this.Classes[entryClassName].Add(i);
+                        this._classes[entryClassName].Add(i);
                     }
                 }
-                this.Words[i] = entrySubtypeArray;
-                this.Weights[i] = entryWeight;
+
+                _words.Add(new Word(entrySubtypeArray, entryWeight));
             }
             total += itemCount;
         }
@@ -86,31 +121,17 @@ namespace Manhood
                 return false;
             }
 
-            int o = this.Words.Length;
-            int s = list.Words.Length + this.Words.Length;
+            _words.AddRange(list._words);
 
-            if (o == s)
+            foreach(KeyValuePair<string, List<int>> pair in list._classes)
             {
-                return true;
-            }
-
-            Array.Resize<string[]>(ref this.Words, s);
-            Array.Resize<int>(ref this.Weights, s);
-            Array.Resize<int>(ref this.DistWeights, s);
-
-            Array.Copy(list.Words, 0, this.Words, o, list.Words.Length);
-            Array.Copy(list.Weights, 0, this.Weights, o, list.Weights.Length);
-            Array.Copy(list.DistWeights, 0, this.DistWeights, o, list.DistWeights.Length);
-
-            foreach(KeyValuePair<string, List<int>> pair in list.Classes)
-            {
-                if (this.Classes.ContainsKey(pair.Key))
+                if (this._classes.ContainsKey(pair.Key))
                 {
-                    this.Classes[pair.Key].AddRange(pair.Value);
+                    this._classes[pair.Key].AddRange(pair.Value);
                 }
                 else
                 {
-                    this.Classes.Add(pair.Key, pair.Value);
+                    this._classes.Add(pair.Key, pair.Value);
                 }
             }
 
@@ -119,15 +140,15 @@ namespace Manhood
 
         public void RandomizeDistWeights(ManRandom rand, int factor)
         {
-            for (int i = 0; i < this.DistWeights.Length; i++)
+            for (int i = 0; i < _words.Count; i++)
             {
                 if (rand.Next(0, factor * 3 + 1) == 0)
                 {
-                    this.DistWeights[i] = rand.Next(1, 20) * factor;
+                    _words[i].WeightOffset = rand.Next(1, 20) * factor;
                 }
                 else
                 {
-                    this.DistWeights[i] = 0;
+                    _words[i].WeightOffset = 0;
                 }
             }
         }
@@ -149,16 +170,16 @@ namespace Manhood
         {
             if (className == "")
             {
-                return rand.Next(0, this.Words.Length);
+                return rand.Next(0, _words.Count);
             }
             else
             {
-                if (!this.Classes.ContainsKey(className))
+                if (!this._classes.ContainsKey(className))
                 {
                     return -1;
                 }
 
-                return this.Classes[className][rand.Next(0, this.Classes[className].Count)];
+                return this._classes[className][rand.Next(0, this._classes[className].Count)];
             }
         }
 
@@ -168,13 +189,13 @@ namespace Manhood
 
             if (subIndex == -1)
             {
-                return Error("SubtypeNotFound->" + subtype);
+                return Error("SubtypeNotFound({0})", subtype);
             }
-            if (subIndex > Words[index].Length - 1)
+            if (subIndex > _words[index].SubCount - 1)
             {
                 return Error("InadequateSubtypeCount");
             }
-            return Format(Words[index][subIndex], format);
+            return _words[index].WordSet[subIndex].Capitalize(format);
         }
 
         public string GetRandomWord(ManRandom rand, string subtype, string className, WordFormat format)
@@ -182,24 +203,28 @@ namespace Manhood
             int subIndex = LookForSubtype(subtype);
             if (subIndex == -1)
             {
-                return Error("SubtypeNotFound->"+subtype);
+                return Error("SubtypeNotFound({0})", subtype);
             }
             int index = PickByWeight(className, rand);
             if (className == "")
             {                
-                if (subIndex > Words[index].Length - 1)
+                if (subIndex > _words[index].SubCount - 1)
                 {
                     return Error("SubtypeOutOfRange");
                 }
-                return Format(Words[index][subIndex], format);
+                return _words[index]
+                    .WordSet[subIndex]
+                    .Capitalize(format);
             }
             else
             {
-                if (!this.Classes.ContainsKey(className))
+                if (!this._classes.ContainsKey(className))
                 {
-                    return Error("ClassNotFound->"+className);
+                    return Error("ClassNotFound({0})", className);
                 }
-                return Format(Words[this.Classes[className][index]][subIndex], format);
+                return _words[this._classes[className][index]]
+                    .WordSet[subIndex]
+                    .Capitalize(format);
             }
         }
 
@@ -208,13 +233,13 @@ namespace Manhood
             int subIndex = LookForSubtype(subtype);
             if (subIndex == -1)
             {
-                return Error("SubtypeNotFound->" + subtype);
+                return Error("SubtypeNotFound({0})", subtype);
             }
             for (int i = 0; i < classNames.Length; i++)
             {
-                if (!this.Classes.ContainsKey(classNames[i]))
+                if (!this._classes.ContainsKey(classNames[i]))
                 {
-                    return Error("ClassNotFound->" + classNames[i]);
+                    return Error("ClassNotFound({0})", classNames[i]);
                 }
             }
             List<int> mcList = GetMultiClassList(classNames);
@@ -223,19 +248,21 @@ namespace Manhood
                 return Error("EmptyMultiClass");
             }
             int index = PickByWeight(mcList, rand);
-            return Format(Words[mcList[index]][subIndex], format);
+            return _words[mcList[index]]
+                .WordSet[subIndex]
+                .Capitalize(format);
         }
 
         private List<int> GetMultiClassList(params string[] classNames)
         {
             List<int> words = new List<int>();
-            List<int> firstClass = this.Classes[classNames[0]];
+            List<int> firstClass = this._classes[classNames[0]];
             for (int i = 0; i < firstClass.Count; i++) // loop through every item of the first class
             {
                 int matchCount = 0;
                 for (int j = 1; j < classNames.Length; j++) // loop through all the other classes
                 {
-                    List<int> currentClass = this.Classes[classNames[j]];
+                    List<int> currentClass = this._classes[classNames[j]];
                     for (int k = 0; k < currentClass.Count; k++) // search their contents and match them up
                     {
                         if (firstClass[i] == currentClass[k])
@@ -260,12 +287,12 @@ namespace Manhood
             int count = items.Count;
             for (int i = 0; i < count; i++)
             {
-                if (randomNumber < this.Weights[items[i]] + this.DistWeights[items[i]])
+                if (randomNumber < _words[items[i]].TotalWeight)
                 {
                     selectedIndex = i;
                     break;
                 }
-                randomNumber -= this.Weights[items[i]] + this.DistWeights[items[i]];
+                randomNumber -= _words[items[i]].TotalWeight;
             }
             return selectedIndex;
         }
@@ -277,28 +304,28 @@ namespace Manhood
             int selectedIndex = 0;
             if (className == "") // This will go through all the words
             {
-                for (int i = 0; i < this.Weights.Length; i++)
+                for (int i = 0; i < _words.Count; i++)
                 {
-                    if (randomNumber < this.Weights[i] + this.DistWeights[i])
+                    if (randomNumber < _words[i].TotalWeight)
                     {
                         selectedIndex = i;
                         break;
                     }
-                    randomNumber -= this.Weights[i] + this.DistWeights[i];
+                    randomNumber -= _words[i].TotalWeight;
                 }
             }
             else
             {
-                List<int> c = this.Classes[className];
+                List<int> c = this._classes[className];
                 int count = c.Count;
                 for (int i = 0; i < count; i++)
                 {
-                    if (randomNumber < this.Weights[c[i]] + this.DistWeights[c[i]])
+                    if (randomNumber < _words[c[i]].TotalWeight)
                     {
                         selectedIndex = i;
                         break;
                     }
-                    randomNumber -= this.Weights[c[i]] + this.DistWeights[c[i]];
+                    randomNumber -= _words[c[i]].TotalWeight;
                 }
             }
             return selectedIndex;
@@ -310,20 +337,20 @@ namespace Manhood
             int length;
             if (className == "")
             {
-                length = this.Weights.Length;
-                for (int i = 0; i < this.Weights.Length; i++)
+                length = _words.Count;
+                for (int i = 0; i < length; i++)
                 {
-                    sum += this.Weights[i] + this.DistWeights[i];
+                    sum += _words[i].TotalWeight;
                 }
                 return sum;
             }
             else
             {
-                List<int> list = this.Classes[className];
+                List<int> list = this._classes[className];
                 length = list.Count;
                 for (int i = 0; i < length; i++)
                 {
-                    sum += this.Weights[list[i]] + this.Weights[list[i]];
+                    sum += _words[list[i]].TotalWeight;
                 }
                 return sum;
             }
@@ -335,28 +362,14 @@ namespace Manhood
             int length= items.Count;
             for (int i = 0; i < length; i++)
             {
-                sum += this.Weights[items[i]] + this.Weights[items[i]];
+                sum += _words[items[i]].TotalWeight;
             }
             return sum;
         }
 
-        private string Format(string input, WordFormat format)
+        private string Error(string type, params object[] args)
         {
-            switch (format)
-            {
-                case WordFormat.AllCaps:
-                    return input.ToUpper();
-                case WordFormat.Proper:
-                    return input.Substring(0, 1).ToUpper() + input.Substring(1);
-                case WordFormat.None:
-                default:
-                    return input;
-            }
-        }
-
-        private string Error(string type)
-        {
-            return "<" + this.Symbol + ":" + type + ">";
+            return "<" + this._symbol + ":" + String.Format(type, args) + ">";
         }
     }    
 }

@@ -64,13 +64,13 @@ namespace Manhood
                         var list = new WordList(reader, ref p);
                         reader.BaseStream.Position = bufferEnd;
 
-                        if (wordBank.ContainsKey(list.Symbol))
+                        if (wordBank.ContainsKey(list._symbol))
                         {
-                            wordBank[list.Symbol].Merge(list);
+                            wordBank[list._symbol].Merge(list);
                         }
                         else
                         {
-                            wordBank.Add(list.Symbol, list);
+                            wordBank.Add(list._symbol, list);
                         }
                     }
                 }
@@ -86,7 +86,7 @@ namespace Manhood
                         string symbol = sc.ToString(); // symbol
                         string title = reader.ReadLongString(); // title
 
-                        var list = new PatternList(title, sc, reader.ReadStringArray());
+                        var list = new PatternList(title, sc, reader.ReadStringArray().Select<string, Pattern>((str, index) => new Pattern(String.Format("{0}_{1}", symbol, index), str)).ToList());
 
                         if (patternBank.ContainsKey(symbol))
                         {

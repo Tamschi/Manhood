@@ -14,7 +14,7 @@ namespace ManConsole
         {
             Console.Title = "Manhood Debug Console";
             ManEngine engine = new ManEngine(Directory.GetFiles("content", "*.moist"));
-            Random rand = new Random();
+            ManRandom rand = new ManRandom();
             string cmd = "";
             while((cmd = Prompt()) != "quit")
             {
@@ -31,7 +31,7 @@ namespace ManConsole
             return input;
         }
 
-        static void PrintOGC(ManEngine engine, Random rand, string pattern)
+        static void PrintOGC(ManEngine engine, ManRandom rand, string pattern)
         {
             try
             {
