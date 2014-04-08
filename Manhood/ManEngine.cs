@@ -22,6 +22,21 @@ namespace Manhood
 
         public ManEngine(string[] mount)
         {
+            Init();
+
+            foreach (string addon in mount)
+            {
+                Mount(addon);
+            }
+        }
+
+        public ManEngine()
+        {
+            Init();
+        }
+
+        private void Init()
+        {
             errorLog = new StringBuilder();
             flagsGlobal = new List<string>();
             flagsLocal = new List<string>();
@@ -31,11 +46,6 @@ namespace Manhood
             globalBank = new Dictionary<string, string>();
             globalValues = new Dictionary<string, string>();
             patternScriptBank = new Dictionary<string, string>();
-
-            foreach (string addon in mount)
-            {
-                Mount(addon);
-            }
         }
 
         public Dictionary<char, WordList> WordBank

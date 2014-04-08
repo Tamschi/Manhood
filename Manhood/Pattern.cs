@@ -27,5 +27,10 @@ namespace Manhood
             _title = title;
             _patternText = patternText;
         }
+
+        public override string ToString()
+        {
+            return _title.Length == 0 ? "Untitled Pattern" : _title;
+        }
     }
 }

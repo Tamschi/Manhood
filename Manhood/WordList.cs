@@ -407,5 +407,10 @@ namespace Manhood
         {
             return "<" + this._symbol + ":" + String.Format(type, args) + ">";
         }
+
+        public override string ToString()
+        {
+            return String.Format("{0} ({1})", _title, _symbol);
+        }
     }    
 }

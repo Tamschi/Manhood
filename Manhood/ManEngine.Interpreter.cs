@@ -595,7 +595,7 @@ namespace Manhood
                 }
                 #endregion
 
-                else if (c == '|' || c == '\n') // Line break
+                else if (c == '|') // Line break
                 {
                     buffer = "\r\n";
                 }
@@ -626,7 +626,7 @@ namespace Manhood
                         currentFormat = WordFormat.AllCaps;
                     }
                 }
-                else if (c == '#') // ManRandom number
+                else if (c == '#') // Random number
                 {
                     if (reader.PeekChar() == '[')
                     {
