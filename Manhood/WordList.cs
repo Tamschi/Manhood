@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
+using EasyIO;
 
 namespace Manhood
 {
@@ -64,16 +65,16 @@ namespace Manhood
         {
             using (BinaryReader reader = new BinaryReader(File.Open(path, FileMode.Open)))
             {
-                Load(reader, ref total);
+                LoadLegacy(reader, ref total);
             }
         }
 
         public WordList(BinaryReader reader, ref int total)
         {
-            Load(reader, ref total);
+            LoadLegacy(reader, ref total);
         }
 
-        private void Load(BinaryReader reader, ref int total) // Load binary
+        private void LoadLegacy(BinaryReader reader, ref int total) // Load binary
         {
             _classes = new Dictionary<string, List<int>>();
             _symbol = reader.ReadChar();
@@ -114,6 +115,39 @@ namespace Manhood
             total += itemCount;
         }
 
+        private void LoadModern(EasyReader reader)
+        {
+            _classes = new Dictionary<string, List<int>>();
+            var classArray = reader.ReadStringArray();
+            foreach(string str in classArray)
+            {
+                _classes.Add(str, new List<int>());
+            }
+
+            int itemCount;
+
+            reader
+                .ReadChar(out _symbol)
+                .ReadString(out _title)
+                .ReadString(out _description)
+                .ReadStringArray(out _subtypes)
+                .ReadInt32(out itemCount);
+
+            _words = new List<Word>(itemCount);
+
+            for(int i = 0; i < itemCount; i++)
+            {
+                var entries = reader.ReadStringArray();
+                int w = reader.ReadInt32();
+                Word word = new Word(entries, w);
+                foreach(int cIndex in reader.ReadArray<int>())
+                {
+                    _classes[classArray[cIndex]].Add(i);
+                }
+                _words.Add(word);
+            }
+        }
+
         public bool Merge(WordList list)
         {
             if (list.Subtypes.Length != this.Subtypes.Length)
@@ -121,17 +155,19 @@ namespace Manhood
                 return false;
             }
 
+            int offset = _words.Count; // Move merged class indices forward by old list length to make sure they point to the right words
+
             _words.AddRange(list._words);
 
             foreach(KeyValuePair<string, List<int>> pair in list._classes)
             {
                 if (this._classes.ContainsKey(pair.Key))
                 {
-                    this._classes[pair.Key].AddRange(pair.Value);
+                    this._classes[pair.Key].AddRange(pair.Value.Select(n => n + offset));
                 }
                 else
                 {
-                    this._classes.Add(pair.Key, pair.Value);
+                    this._classes.Add(pair.Key, pair.Value.Select(n => n + offset).ToList());
                 }
             }
 
