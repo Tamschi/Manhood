@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Manhood
 {
-    public class CharReader
+    internal class CharReader
     {
         string src;
 
@@ -45,6 +45,27 @@ namespace Manhood
         {
             if (this.EndOfString) return -1;
             return src[this.Position];
+        }
+
+        public bool ReadSquareBlock(out string body, out int start)
+        {
+            start = 0;
+            if (PeekChar() != '[')
+            {
+                body = "";
+                return false;
+            }
+            ReadChar();
+            start = this.Position;
+            int close = src.FindClosingSquareBracket(this.Position);
+            if (close < 0)
+            {
+                body = "";
+                return false;
+            }
+            body = ReadTo(close);
+            this.Position++;
+            return true;
         }
 
         public string ReadString(int length)

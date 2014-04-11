@@ -37,22 +37,19 @@ namespace Manhood
         public ManRandom(long seed)
         {
             _sg = new List<SG>();
-            Seed = seed;
-            Generation = 0;
+            _sg.Add(new SG(seed, 0));
         }
 
         public ManRandom(long seed, long generation)
         {
             _sg = new List<SG>();
-            Seed = seed;
-            Generation = generation;
+            _sg.Add(new SG(seed, generation));
         }
 
         public ManRandom()
         {
             _sg = new List<SG>();
-            Seed = Environment.TickCount;
-            Generation = 0;
+            _sg.Add(new SG(Environment.TickCount, 0));
         }
 
         public static long GetRaw(long s, long g)

@@ -12,7 +12,7 @@ namespace Manhood
         private const uint magicMB = 0xBADDF001;
         private const uint magicTV = 0xBADD5456;
 
-        public void Mount(string addonPath)
+        public void MountLegacy(string addonPath)
         {
             using (BinaryReader reader = new BinaryReader(File.Open(addonPath, FileMode.Open), Encoding.ASCII))
             {
@@ -29,11 +29,11 @@ namespace Manhood
 
                 if (reader.ReadBoolean()) // macros
                 {
-                    LoadMacroList(reader.ReadStringArray());
+                    LoadDefinitions(DefinitionType.Macro, reader.ReadStringArray());
                 }
                 if (reader.ReadBoolean()) // globals
                 {
-                    LoadGlobalList(reader.ReadStringArray());
+                    LoadDefinitions(DefinitionType.Global, reader.ReadStringArray());
                 }
 
                 if (reader.ReadBoolean()) // outlines (deprecated)
@@ -118,5 +118,7 @@ namespace Manhood
                 }
             }
         }
+
+        
     }
 }

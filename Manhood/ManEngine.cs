@@ -12,9 +12,7 @@ namespace Manhood
     {
         Dictionary<char, WordList> wordBank;
         Dictionary<string, PatternList> patternBank;
-        Dictionary<string, string> macroBank;
-        Dictionary<string, string> globalBank;
-        Dictionary<string, string> globalValues;
+        Dictionary<string, Definition> defBank;
         Dictionary<string, string> patternScriptBank;
         List<string> flagsGlobal;
         List<string> flagsLocal;
@@ -26,7 +24,7 @@ namespace Manhood
 
             foreach (string addon in mount)
             {
-                Mount(addon);
+                MountLegacy(addon);
             }
         }
 
@@ -42,9 +40,7 @@ namespace Manhood
             flagsLocal = new List<string>();
             wordBank = new Dictionary<char, WordList>();
             patternBank = new Dictionary<string, PatternList>();
-            macroBank = new Dictionary<string, string>();
-            globalBank = new Dictionary<string, string>();
-            globalValues = new Dictionary<string, string>();
+            defBank = new Dictionary<string, Definition>();
             patternScriptBank = new Dictionary<string, string>();
         }
 
@@ -53,14 +49,9 @@ namespace Manhood
             get { return wordBank; }
         }
 
-        public Dictionary<string, string> Macros
+        public Dictionary<string, Definition> Definitions
         {
-            get { return macroBank; }
-        }
-
-        public Dictionary<string, string> Globals
-        {
-            get { return globalBank; }
+            get { return defBank; }
         }
 
         public StringBuilder ErrorLog
@@ -68,26 +59,13 @@ namespace Manhood
             get { return errorLog; }
         }
 
-        public void AssignGlobals(ManRandom rand)
+        private void AssignGlobals(ManRandom rand) // redo in interpreter locally
         {
-            foreach (KeyValuePair<string, string> entry in globalBank)
+            foreach (KeyValuePair<string, Definition> entry in defBank)
             {
                 var ogc = new OutputCollection();
-                Interpret(rand, ogc, entry.Value);
-                globalValues[entry.Key] = ogc.ToString();
-            }
-        }
-
-        public void SetGlobal(string name, string value)
-        {
-            if (globalBank.ContainsKey(name))
-            {
-                globalValues[name] = value;
-            }
-            else
-            {
-                globalBank.Add(name, "undefined");
-                globalValues.Add(name, value);
+                Interpret(rand, ogc, entry.Value.Body);
+                entry.Value.State = ogc.ToString();
             }
         }
 
@@ -138,7 +116,7 @@ namespace Manhood
 
         public string Expand(string pattern)
         {
-            return TranslateDefs(pattern, "", "");
+            return TranslateDefs(pattern, "");
         }
 
         private bool ClassExists(char symbol, string className)
@@ -209,38 +187,20 @@ namespace Manhood
             Interpret(rand, ogc, rawPattern);
         }
 
-        private void LoadMacroList(string[] entries)
+        private void LoadDefinitions(DefinitionType type, string[] entries)
         {
             foreach(string entry in entries)
             {
                 if (entry.StartsWith("//")) continue;
                 string[] parts = entry.Split(new string[] { "::" }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length != 2) continue;
-                if (macroBank.ContainsKey(parts[0]))
+                if (defBank.ContainsKey(parts[0]))
                 {
-                    macroBank[parts[0]] = parts[1];
+                    defBank[parts[0]] = new Definition(type, parts[0], parts[1]);
                 }
                 else
                 {
-                    macroBank.Add(parts[0], parts[1]);
-                }
-            }
-        }
-
-        private void LoadGlobalList(string[] entries)
-        {
-            foreach (string entry in entries)
-            {
-                if (entry.StartsWith("//")) continue;
-                string[] parts = entry.Split(new string[] { "::" }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length != 2) continue;
-                if (globalBank.ContainsKey(parts[0]))
-                {
-                    globalBank[parts[0]] = parts[1];
-                }
-                else
-                {
-                    globalBank.Add(parts[0], parts[1]);
+                    defBank.Add(parts[0], new Definition(type, parts[0], parts[1]));
                 }
             }
         }

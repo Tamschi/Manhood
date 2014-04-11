@@ -19,12 +19,11 @@ namespace Manhood
 
         static readonly Regex regWordCallModern = new Regex(patWordCallModern, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
 
-
         private void Interpret(ManRandom rand, OutputCollection stream, string rawPattern)
         {
             errorLog.Clear();
 
-            CharReader reader = new CharReader(TranslateDefs(rawPattern, "", ""), 0);
+            CharReader reader = new CharReader(TranslateDefs(rawPattern, ""), 0);
 
             // Output stuff
             WordFormat currentFormat = WordFormat.None;
@@ -366,123 +365,85 @@ namespace Manhood
                 }
                 #endregion
 
-                #region Flags
+                #region Functions
                 else if (c == '$')
                 {
                     int leftBracket = reader.Source.IndexOf("[", reader.Position);
                     if (leftBracket < 0)
                     {
-                        Error("Missing '[' on flag call.", reader);
+                        Error("Missing '[' on function call.", reader);
                         return;
                     }
-                    string func = reader.ReadString(leftBracket - reader.Position).ToLower();
-                    reader.ReadChar(); // skip [
-                    if (func.Contains(' '))
+                    string func = reader.ReadTo(leftBracket).ToLower(),
+                        param1 = "",
+                        param2 = "";
+
+                    int
+                        param1start,
+                        param2start;
+
+                    if ((func = func.ToLower()).Contains(' '))
                     {
-                        Error("Invalid flag function.", reader);
+                        Error("Function names cannot contain spaces.", reader);
                         return;
                     }
-                    int rightBracket = reader.Source.FindClosingSquareBracket(reader.Position);
-                    if (rightBracket < leftBracket)
+
+                    if (!reader.ReadSquareBlock(out param1, out param1start))
                     {
-                        Error("Missing ']' on flag call.", reader);
+                        Error("Invalid parameter block.", reader);
                         return;
                     }
-                    string firstParam = reader.ReadString(rightBracket - reader.Position);
-                    reader.ReadChar(); // skip ]
+                    reader.ReadSquareBlock(out param2, out param2start);
+
                     if (func == "ls")
                     {
-                        SetLocalFlag(firstParam);
+                        SetLocalFlag(param1);
                         continue;
                     }
                     else if (func == "lu")
                     {
-                        UnsetLocalFlag(firstParam);
+                        UnsetLocalFlag(param1);
                         continue;
                     }
                     else if (func == "l?")
-                    {
-                        if (reader.ReadChar() != '[')
+                    {                        
+                        if (CheckLocalFlag(param1))
                         {
-                            Error("Missing '[' in IF body.", reader);
-                            return;
-                        }
-                        int rightBodyBracket = reader.Source.FindClosingSquareBracket(reader.Position);
-                        if (rightBodyBracket < 0)
-                        {
-                            Error("Missing ']' in IF body.", reader);
-                            return;
-                        }
-                        if (!CheckLocalFlag(firstParam))
-                        {
-                            reader.Position = rightBodyBracket;
+                            reader.Position = param2start;
                         }
                         continue;
                     }
                     else if (func == "l!")
-                    {
-                        if (reader.ReadChar() != '[')
+                    {                        
+                        if (!CheckLocalFlag(param1))
                         {
-                            Error("Missing '[' in IF body.", reader);
-                            return;
-                        }
-                        int rightBodyBracket = reader.Source.FindClosingSquareBracket(reader.Position);
-                        if (rightBodyBracket < 0)
-                        {
-                            Error("Missing ']' in IF body.", reader);
-                            return;
-                        }
-                        if (CheckLocalFlag(firstParam))
-                        {
-                            reader.Position = rightBodyBracket;
+                            reader.Position = param2start;
                         }
                         continue;
                     }
                     else if (func == "gs")
                     {
-                        SetGlobalFlag(firstParam);
+                        SetGlobalFlag(param1);
                         continue;
                     }
                     else if (func == "gu")
                     {
-                        UnsetGlobalFlag(firstParam);
+                        UnsetGlobalFlag(param1);
                         continue;
                     }
                     else if (func == "g?")
                     {
-                        if (reader.ReadChar() != '[')
+                        if (CheckGlobalFlag(param1))
                         {
-                            Error("Missing '[' in IF body.", reader);
-                            return;
-                        }
-                        int rightBodyBracket = reader.Source.IndexOf("]", reader.Position);
-                        if (rightBodyBracket < 0)
-                        {
-                            Error("Missing ']' in IF body.", reader);
-                            return;
-                        }
-                        if (!CheckGlobalFlag(firstParam))
-                        {
-                            reader.Position = rightBodyBracket;
+                            reader.Position = param2start;
                         }
                         continue;
                     }
                     else if (func == "g!")
                     {
-                        if (reader.ReadChar() != '[')
+                        if (!CheckGlobalFlag(param1))
                         {
-                            Error("Missing '[' in IF body.", reader);
-                            return;
-                        }
-                        int rightBodyBracket = reader.Source.IndexOf("]", reader.Position);
-                        if (rightBodyBracket < 0)
-                        {
-                            Error("Missing ']' in IF body.", reader);
-                            return;
-                        }
-                        if (CheckGlobalFlag(firstParam))
-                        {
-                            reader.Position = rightBodyBracket;
+                            reader.Position = param2start;
                         }
                         continue;
                     }
@@ -494,7 +455,7 @@ namespace Manhood
                 }
                 #endregion
 
-                #region ManRandom word
+                #region Random word
                 else if (c == '+') // ManRandom word
                 {
                     var match = regWordCallModern.Match(reader.Source, reader.Position);
@@ -628,48 +589,22 @@ namespace Manhood
                 }
                 else if (c == '#') // Random number
                 {
-                    if (reader.PeekChar() == '[')
+                    string rnBody;
+                    int rnStart;
+                    if (reader.ReadSquareBlock(out rnBody, out rnStart))
                     {
-                        reader.Position++;
-
-                        int closure = reader.Source.IndexOf(']', reader.Position);
-                        if (closure < 0)
-                        {
-                            Error("Incomplete parenthases in random number range.", reader);
-                            return;
-                        }
-
-                        string rangeStr = reader.ReadString(closure - reader.Position);
-                        reader.Position++; // Skip past ']'
-
-                        string[] rangeParts = rangeStr.Split('-');
-
-                        if (rangeParts.Length != 2)
-                        {
-                            Error("Invalid number of range elements for random number. Got " + rangeParts.Length + ", need 2.", reader);
-                            return;
-                        }
-
-                        int min, max;
-
-                        if (!int.TryParse(rangeParts[0], out min))
-                        {
-                            Error("Invalid minimum value for random number.", reader);
-                            return;
-                        }
-
-                        if (!int.TryParse(rangeParts[1], out max))
-                        {
-                            Error("Invalid maximum value for random number.", reader);
-                            return;
-                        }
+                        var m = Regex.Match(rnBody, @"(?<min>\d+)\-(?<max>\d+)", RegexOptions.ExplicitCapture);
+                        if (!m.Success) continue;
 
                         if (currentFormat == WordFormat.Capitalized)
                         {
                             currentFormat = WordFormat.None;
                         }
 
-                        buffer = rand.Next(min, max).ToString();
+                        int min = Int32.Parse(m.Groups["min"].Value);
+                        int max = Int32.Parse(m.Groups["max"].Value);
+
+                        buffer = rand.Next(Math.Min(min, max), Math.Max(min, max)).ToString();
                     }
                 }
                 else if (!"{}[]<>".Contains(c)) // Covers all other characters except brackets
@@ -734,103 +669,73 @@ namespace Manhood
             flagsLocal.Clear();
         }
 
-        private string TranslateDefs(string rawPattern, string lastMacro, string lastGlobal)
+        private string TranslateDefs(string rawPattern, string last)
         {
             CharReader pp = new CharReader(rawPattern, 0);
             string pattern = "";
-            if (rawPattern.Contains("=") || rawPattern.Contains("&"))
+            if (rawPattern.Contains("="))
             {
                 while (!pp.EndOfString)
                 {
                     char d = pp.ReadChar();
                     if (d == '=')
                     {
-                        if (pp.PeekChar() != '[')
+                        string name;
+                        int start;
+                        if (!pp.ReadSquareBlock(out name, out start))
                         {
-                            Error("Missing '[' in macro call", pp);
+                            Error("Bad def call", pp);
                             return "";
                         }
 
-                        pp.Position++; // Skip [
-                        int endIndex = rawPattern.IndexOf(']', pp.Position);
-
-                        if (endIndex == -1)
+                        if (name == "")
                         {
-                            Error("Missing ']' in macro call", pp);
+                            Error("Empty def.", pp);
                             return "";
                         }
-
-                        string macroName = pp.ReadString(endIndex - pp.Position);
-
-                        if (macroName == "")
+                        if (name.Contains("+"))
                         {
-                            Error("Empty macro.", pp);
-                            return "";
-                        }
-                        if (macroName.Contains("+"))
-                        {
-                            string[] macroParts = macroName.Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
+                            string[] macroParts = name.Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
                             if (macroParts.Length == 0)
                             {
-                                Error("Empty macro.", pp);
+                                Error("Empty def.", pp);
                                 return "";
                             }
                             for (int i = 0; i < macroParts.Length; i++)
                             {
                                 string macroPart = macroParts[i].Trim();
-                                if (!macroBank.ContainsKey(macroPart))
+                                if (!defBank.ContainsKey(macroPart))
                                 {
-                                    Error("Macro \"" + macroPart + "\" doesn't exist.", pp);
+                                    Error("Def \"" + macroPart + "\" doesn't exist.", pp);
                                     return "";
                                 }
-                                pattern += TranslateDefs(macroBank[macroPart], lastMacro, lastGlobal);
+                                pattern += TranslateDefs(defBank[macroPart].Body, last);
                             }
                         }
                         else
                         {
-                            if (macroName == lastMacro)
+                            if (name == last)
                             {
-                                Error("Macro error: Cannot create a macro that references itself. (" + macroName + ")", pp);
+                                Error("Def error: Cannot create a definition that references itself. (" + name + ")", pp);
                                 return "";
                             }
-                            if (!macroBank.ContainsKey(macroName))
+                            if (!defBank.ContainsKey(name))
                             {
-                                Error("Macro \"" + macroName + "\" doesn't exist.", pp);
+                                Error("Def \"" + name + "\" doesn't exist.", pp);
                                 return "";
                             }
-                            pattern += TranslateDefs(macroBank[macroName], macroName, lastGlobal);
+                            var def = defBank[name];
+                            if (def.Type == DefinitionType.Macro)
+                            {
+                                pattern += TranslateDefs(def.Body, name);
+                            }
+                            else
+                            {
+                                pattern += TranslateDefs(def.State, name);
+                            }
+                            
                         }
                         pp.Position++; // Skip ]  
-                    }
-                    else if (d == '&') // Bracket check in case we hit a flag
-                    {
-                        if (pp.PeekChar() != '[')
-                        {
-                            Error("Missing '[' in global call", pp);
-                            return "";
-                        }
-                        pp.Position++; // Skip [
-                        int endIndex = rawPattern.IndexOf(']', pp.Position);
-
-                        if (endIndex == -1)
-                        {
-                            Error("Missing ']' in global call", pp);
-                            return "";
-                        }
-
-                        string globalName = pp.ReadString(endIndex - pp.Position);
-                        if (globalName == lastGlobal)
-                        {
-                            Error("Global error: Cannot create a global that references itself. (" + globalName + ")", pp);
-                            return "";
-                        }
-                        pp.Position++; // Skip ]
-                        if (!globalValues.ContainsKey(globalName))
-                        {
-                            Error("Global \"" + globalName + "\" doesn't exist.", pp);
-                            return "";
-                        }
-                        pattern += TranslateDefs(globalValues[globalName], lastMacro, globalName);
                     }
                     else
                     {

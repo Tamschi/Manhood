@@ -10,7 +10,7 @@ namespace Manhood
     public class Definition
     {
         private DefinitionType _type;
-        private string _name, _body;
+        private string _name, _body, _state;
 
         public DefinitionType Type
         {
@@ -28,6 +28,12 @@ namespace Manhood
         {
             get { return _body; }
             set { _body = value; }
+        }
+
+        public string State
+        {
+            get { return _state ?? "UNDEFINED"; }
+            set { _state = value; }
         }
 
         public Definition(DefinitionType type, string name, string body)
