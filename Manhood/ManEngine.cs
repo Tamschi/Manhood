@@ -31,6 +31,8 @@ namespace Manhood
 
         private void Init()
         {
+            this.State = new EngineState();
+
             errorLog = new StringBuilder();
             flagsGlobal = new List<string>();
             flagsLocal = new List<string>();

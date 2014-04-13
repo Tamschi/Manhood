@@ -35,16 +35,6 @@
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Vanilla|AnyCPU'">
-    <OutputPath>bin\Vanilla\</OutputPath>
-    <DefineConstants>TRACE;VANILLA</DefineConstants>
-    <Optimize>true</Optimize>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
   <ItemGroup>
     <Reference Include="EasyIO">
       <HintPath>..\..\..\Visual Studio 2013\Projects\EasyIO\EasyIO\bin\Release\EasyIO.dll</HintPath>
