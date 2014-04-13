@@ -282,7 +282,7 @@ namespace Manhood
                 }
 
                 int min = Int32.Parse(m.Groups["min"].Value);
-                int max = Int32.Parse(m.Groups["max"].Value);
+                int max = Int32.Parse(m.Groups["max"].Value) + 1;
 
                 State.WriteBuffer(State.RNG.Next(Math.Min(min, max), Math.Max(min, max)).ToString());
             }
@@ -406,7 +406,7 @@ namespace Manhood
                     Error("Repeater range must be greater than zero, and max > min.", State.Reader);
                     return false;
                 }
-                constantParam = State.RNG.Next(min, max);
+                constantParam = State.RNG.Next(min, max + 1);
             }
             // separator
             if (State.Reader.ReadChar() != '[')

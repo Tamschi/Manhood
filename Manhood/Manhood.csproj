@@ -51,6 +51,7 @@
     <Compile Include="CharReader.cs" />
     <Compile Include="ContentType.cs" />
     <Compile Include="Definition.cs" />
+    <Compile Include="EngineState.cs" />
     <Compile Include="Escape.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="ManPacker.cs" />

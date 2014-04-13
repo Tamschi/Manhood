@@ -117,7 +117,7 @@ namespace Manhood
             get { return errorLog; }
         }
 
-        private void AssignGlobals(ManRandom rand) // redo in interpreter locally
+        public void AssignGlobals(ManRandom rand) // redo in interpreter locally
         {
             foreach (KeyValuePair<string, Definition> entry in defBank)
             {
