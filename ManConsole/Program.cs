@@ -14,7 +14,7 @@ namespace ManConsole
         {
             Console.Title = "Manhood Debug Console";
             
-            ManEngine engine = new ManEngine("content.man");
+            ManEngine engine = new ManEngine("content\\content.man");
             ManRandom rand = new ManRandom();
             string cmd = "";
             while((cmd = Prompt()) != "quit")
