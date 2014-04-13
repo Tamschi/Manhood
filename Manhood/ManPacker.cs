@@ -30,7 +30,7 @@ namespace Manhood
                 {
                     writer.Write(ContentType.Pattern);
                     writer.Write(pat.Title);
-                    writer.Write(pat.PatternText);
+                    writer.Write(pat.Body);
                 }
 
                 // Write dictionary

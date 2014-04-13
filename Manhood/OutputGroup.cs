@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,38 +7,125 @@ using System.Threading.Tasks;
 
 namespace Manhood
 {
-    class OutputGroup
+    /// <summary>
+    /// Represents an output group.
+    /// </summary>
+    public class OutputGroup : IEnumerable
     {
-        public string Name;
-        public int Start, End;
-        public GroupVisibility Visibility;
+        private Dictionary<string, StringBuilder> _dict;
 
-        public OutputGroup(string name, int start, int end)
+        /// <summary>
+        /// Initializes a new instance of the Manhood.OutputGroup class.
+        /// </summary>
+        public OutputGroup()
         {
-            if (name.StartsWith("."))
-            {
-                name = name.Substring(1);
-                this.Visibility = GroupVisibility.Private;
-            }
-            else if (name.StartsWith("_"))
-            {
-                name = name.Substring(1);
-                this.Visibility = GroupVisibility.Internal;
-            }
-            else
-            {
-                this.Visibility = GroupVisibility.Public;
-            }
-            this.Name = name;
-            this.Start = start;
-            this.End = end;
+            _dict = new Dictionary<string, StringBuilder>();
         }
-    }
 
-    enum GroupVisibility
-    {
-        Public,
-        Internal,
-        Private
+        /// <summary>
+        /// Gets the keys for this output group.
+        /// </summary>
+        public ICollection<string> Keys
+        {
+            get { return _dict.Keys; }
+        }
+
+        /// <summary>
+        /// Gets the values for this output group.
+        /// </summary>
+        public ICollection<StringBuilder> Values
+        {
+            get { return _dict.Values; }
+        }
+
+        /// <summary>
+        /// Returns the main output string for this collection.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
+        {
+            return this["main"].ToString();
+        }
+
+        /// <summary>
+        /// Gets the value for a specified output name.
+        /// </summary>
+        /// <param name="key">The name of the output.</param>
+        /// <returns></returns>
+        public StringBuilder this[string key]
+        {
+            get
+            {
+                StringBuilder v = null;
+                if (_dict.TryGetValue(key, out v))
+                {
+                    return v;
+                }
+                v = new StringBuilder();
+                _dict.Add(key, v);
+                return v;
+            }
+            set
+            {
+                if (_dict.ContainsKey(key))
+                {
+                    _dict[key] = value;
+                }
+                else
+                {
+                    _dict.Add(key, value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clears all outputs.
+        /// </summary>
+        public void Clear()
+        {
+            _dict.Clear();
+        }
+
+        /// <summary>
+        /// Returns a boolean indicating if a particular output is contained in the group.
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public bool Contains(KeyValuePair<string, StringBuilder> item)
+        {
+            return _dict.Contains(item);
+        }
+
+        /// <summary>
+        /// Returns a boolean indicating if the specified key is contained in the group.
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public bool ContainsKey(string item)
+        {
+            return _dict.ContainsKey(item);
+        }
+
+        /// <summary>
+        /// Gets the number of outputs in the group.
+        /// </summary>
+        public int Count
+        {
+            get { return _dict.Count; }
+        }
+
+        /// <summary>
+        /// Gets the enumerator for this instance.
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerator<KeyValuePair<string, StringBuilder>> GetEnumerator()
+        {
+            return _dict.GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return _dict.GetEnumerator();
+        }
     }
 }

@@ -21,7 +21,7 @@ namespace Manhood
         
         internal EngineState State;
 
-        private void Interpret(ManRandom rand, OutputCollection output, string rawPattern)
+        private void Interpret(ManRandom rand, OutputGroup output, string rawPattern)
         {
             errorLog.Clear();
 
@@ -40,10 +40,10 @@ namespace Manhood
                 switch (State.CurrentChar)
                 {
                     case '<':
-                        if (!DoOutputGroupStart()) return;
+                        if (!DoOutputStart()) return;
                         break;
                     case '>':
-                        if (!DoOutputGroupEnd()) return;
+                        if (!DoOutputEnd()) return;
                         break;
                     case '{':
                         if (!DoSelectorStart()) return;
@@ -130,13 +130,13 @@ namespace Manhood
 
         private void DoCapsLock()
         {
-            if (State.CurrentFormat == WordFormat.AllCaps)
+            if (State.CurrentFormat == WordCase.AllCaps)
             {
-                State.CurrentFormat = WordFormat.None;
+                State.CurrentFormat = WordCase.None;
             }
             else
             {
-                State.CurrentFormat = WordFormat.AllCaps;
+                State.CurrentFormat = WordCase.AllCaps;
             }
         }
 
@@ -145,15 +145,15 @@ namespace Manhood
             if (State.Reader.PeekChar() == '~')
             {
                 State.Reader.ReadChar();
-                State.CurrentFormat = WordFormat.Capitalized;
+                State.CurrentFormat = WordCase.Capitalized;
             }
-            else if (State.CurrentFormat == WordFormat.Proper)
+            else if (State.CurrentFormat == WordCase.Proper)
             {
-                State.CurrentFormat = WordFormat.None;
+                State.CurrentFormat = WordCase.None;
             }
             else
             {
-                State.CurrentFormat = WordFormat.Proper;
+                State.CurrentFormat = WordCase.Proper;
             }
         }
 
@@ -209,12 +209,12 @@ namespace Manhood
             return true;
         }
 
-        private bool DoOutputGroupStart()
+        private bool DoOutputStart()
         {
             int beginIndex = State.Reader.Find(':', State.ReadPos);
             if (beginIndex == -1)
             {
-                Error("Couldn't find output group name terminator.", State.Reader);
+                Error("Couldn't find output name terminator.", State.Reader);
                 return false;
             }
 
@@ -224,23 +224,23 @@ namespace Manhood
             int endIndex = State.Reader.Source.FindClosingTriangleBracket(State.ReadPos);
             if (endIndex == -1)
             {
-                Error(String.Format("Closing bracket couldn't be found for output group '{0}'.", groupName), State.Reader);
+                Error(String.Format("Closing bracket couldn't be found for output '{0}'.", groupName), State.Reader);
                 return false;
             }
 
-            State.OutputGroups.Add(new OutputGroup(groupName, beginIndex + 1, endIndex));
+            State.ActiveOutputs.Add(new Output(groupName, beginIndex + 1, endIndex));
             return true;
         }
 
-        private bool DoOutputGroupEnd()
+        private bool DoOutputEnd()
         {
-            var group = State.OutputGroups.LastOrDefault(gi => gi.Name.ToLower() != "main");
+            var group = State.ActiveOutputs.LastOrDefault(gi => gi.Name.ToLower() != "main");
             if (group == null)
             {
-                Error("Output group closure found with no associated instance.", State.Reader);
+                Error("Output closure found with no associated instance.", State.Reader);
                 return false;
             }
-            State.OutputGroups.RemoveAt(State.OutputGroups.Count - 1);
+            State.ActiveOutputs.RemoveAt(State.ActiveOutputs.Count - 1);
             return true;
         }
 
@@ -248,18 +248,18 @@ namespace Manhood
         {
             if (State.PrevChar == ' ' && State.CurrentChar == 'a' && !char.IsLetterOrDigit((char)State.Reader.PeekChar())) // YES! YES!
             {
-                State.AnIndex = State.Output[State.OutputGroups[State.OutputGroups.Count - 1].Name].Length + 1;
+                State.AnIndex = State.Output[State.ActiveOutputs[State.ActiveOutputs.Count - 1].Name].Length + 1;
                 State.AnFormat = State.CurrentFormat;
             }
 
-            if (State.CurrentFormat == WordFormat.AllCaps || (State.CurrentFormat == WordFormat.Proper && !Char.IsLetterOrDigit(State.PrevChar) && State.PrevChar.PermitsCap()))
+            if (State.CurrentFormat == WordCase.AllCaps || (State.CurrentFormat == WordCase.Proper && !Char.IsLetterOrDigit(State.PrevChar) && State.PrevChar.PermitsCap()))
             {
                 State.WriteBuffer(State.CurrentChar.ToString().ToUpper());
             }
-            else if (State.CurrentFormat == WordFormat.Capitalized)
+            else if (State.CurrentFormat == WordCase.Capitalized)
             {
                 State.WriteBuffer(State.CurrentChar.ToString().ToUpper());
-                State.CurrentFormat = WordFormat.None;
+                State.CurrentFormat = WordCase.None;
             }
             else
             {
@@ -276,9 +276,9 @@ namespace Manhood
                 var m = Regex.Match(rnBody, @"(?<min>\d+)\-(?<max>\d+)", RegexOptions.ExplicitCapture);
                 if (!m.Success) return false;
 
-                if (State.CurrentFormat == WordFormat.Capitalized)
+                if (State.CurrentFormat == WordCase.Capitalized)
                 {
-                    State.CurrentFormat = WordFormat.None;
+                    State.CurrentFormat = WordCase.None;
                 }
 
                 int min = Int32.Parse(m.Groups["min"].Value);
@@ -586,23 +586,23 @@ namespace Manhood
 
             if (State.AnIndex > -1 && State.Buffer.ToString().StartsWithVowel())
             {
-                if (State.AnFormat == WordFormat.AllCaps)
+                if (State.AnFormat == WordCase.AllCaps)
                 {
-                    State.Output[State.OutputGroups[State.OutputGroups.Count - 1].Name].Insert(State.AnIndex, "N");
+                    State.Output[State.ActiveOutputs[State.ActiveOutputs.Count - 1].Name].Insert(State.AnIndex, "N");
                 }
                 else
                 {
-                    State.Output[State.OutputGroups[State.OutputGroups.Count - 1].Name].Insert(State.AnIndex, "n");
+                    State.Output[State.ActiveOutputs[State.ActiveOutputs.Count - 1].Name].Insert(State.AnIndex, "n");
                 }
             }
 
-            if (State.CurrentFormat == WordFormat.Capitalized)
+            if (State.CurrentFormat == WordCase.Capitalized)
             {
-                State.CurrentFormat = WordFormat.None;
+                State.CurrentFormat = WordCase.None;
             }
 
             State.AnIndex = -1;
-            State.AnFormat = WordFormat.None;
+            State.AnFormat = WordCase.None;
             return true;
         }
 
@@ -689,32 +689,32 @@ namespace Manhood
 
         private void DoBuffer()
         {
-            int groupCount = State.OutputGroups.Count;
-            var currentGroup = State.OutputGroups[groupCount - 1];
+            int groupCount = State.ActiveOutputs.Count;
+            var currentGroup = State.ActiveOutputs[groupCount - 1];
             var gVis = currentGroup.Visibility;
 
             switch (gVis)
             {
-                case GroupVisibility.Public:
+                case OutputVisibility.Public:
                     {
-                        foreach (var group in State.OutputGroups)
+                        foreach (var group in State.ActiveOutputs)
                         {
                             State.Output[group.Name].Append(State.BufferText);
                         }
                     }
                     break;
-                case GroupVisibility.Internal:
+                case OutputVisibility.Internal:
                     {
-                        OutputGroup group = null;
-                        for (int i = 0; i < State.OutputGroups.Count; i++)
+                        Output group = null;
+                        for (int i = 0; i < State.ActiveOutputs.Count; i++)
                         {
-                            group = State.OutputGroups[groupCount - (i + 1)];
-                            if (group.Visibility != GroupVisibility.Internal) break;
+                            group = State.ActiveOutputs[groupCount - (i + 1)];
+                            if (group.Visibility != OutputVisibility.Internal) break;
                             State.Output[group.Name].Append(State.BufferText);
                         }
                     }
                     break;
-                case GroupVisibility.Private:
+                case OutputVisibility.Private:
                     {
                         State.Output[currentGroup.Name].Append(State.BufferText);
                     }

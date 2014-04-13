@@ -7,6 +7,9 @@ using EasyIO;
 
 namespace Manhood
 {
+    /// <summary>
+    /// Represents a list of words.
+    /// </summary>
     public class WordList
     {
         #region Non-public fields
@@ -26,34 +29,52 @@ namespace Manhood
 
         #region Properties
 
+        /// <summary>
+        /// Gets or sets the symbol associated with this list.
+        /// </summary>
         public char Symbol
         {
             get { return _symbol; }
             set { _symbol = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the title of this list.
+        /// </summary>
         public string Title
         {
             get { return _title; }
             set { _title = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the description of this list.
+        /// </summary>
         public string Description
         {
             get { return _description; }
             set { _description = value; }
         }
 
+        /// <summary>
+        /// Gets the entry collection for this list.
+        /// </summary>
         public List<Word> Words
         {
             get { return _words; }
         }
 
+        /// <summary>
+        /// Gets the class index table for this list.
+        /// </summary>
         public Dictionary<string, List<int>> Classes
         {
             get { return _classes; }
         }
 
+        /// <summary>
+        /// Gets the subtypes for this list.
+        /// </summary>
         public string[] Subtypes
         {
             get { return _subtypes; }
@@ -66,6 +87,11 @@ namespace Manhood
 
         }
 
+        /// <summary>
+        /// Loads a word list in the modern format.
+        /// </summary>
+        /// <param name="reader">The EasyReader to read data from.</param>
+        /// <returns></returns>
         public static WordList LoadModernList(EasyReader reader)
         {
             var list = new WordList();
@@ -73,12 +99,167 @@ namespace Manhood
             return list;
         }
 
+        /// <summary>
+        /// Loads a word list in the legacy format.
+        /// </summary>
+        /// <param name="reader">The BinaryReader to read data from.</param>
+        /// <returns></returns>
+        [Obsolete]
         public static WordList LoadLegacyList(BinaryReader reader)
         {
             var list = new WordList();
             list.LoadLegacy(reader);
             return list;
         }
+
+        /// <summary>
+        /// Retrieves a random word index from the specified class.
+        /// </summary>
+        /// <param name="rand">The random number generator to pass to the engine.</param>
+        /// <param name="className">The class to get a word from.</param>
+        /// <returns></returns>
+        public int GetRandomIndex(ManRandom rand, string className)
+        {
+            if (className == "")
+            {
+                return rand.Next(0, _words.Count);
+            }
+            else
+            {
+                if (!this._classes.ContainsKey(className))
+                {
+                    return -1;
+                }
+
+                return this._classes[className][rand.Next(0, this._classes[className].Count)];
+            }
+        }
+
+        /// <summary>
+        /// Gets the word at the specified index and of the specified subtype.
+        /// </summary>
+        /// <param name="index">The index of the entry.</param>
+        /// <param name="subtype">The desired subtype.</param>
+        /// <param name="format">The formatting to use.</param>
+        /// <returns></returns>
+        public string GetWordByIndex(int index, string subtype, WordCase format = WordCase.None)
+        {
+            int subIndex = LookForSubtype(subtype);
+
+            if (subIndex == -1)
+            {
+                return Error("SubtypeNotFound({0})", subtype);
+            }
+            if (subIndex > _words[index].SubCount - 1)
+            {
+                return Error("InadequateSubtypeCount");
+            }
+            return _words[index].WordSet[subIndex].Capitalize(format);
+        }
+
+        /// <summary>
+        /// Gets a random word of the specified subtype, class and format.
+        /// </summary>
+        /// <param name="rand">The random number generator to pass to the engine.</param>
+        /// <param name="subtype">The desired subtype.</param>
+        /// <param name="className">The class to get a word from.</param>
+        /// <param name="format">The formatting to use.</param>
+        /// <returns></returns>
+        public string GetRandomWord(ManRandom rand, string subtype, string className, WordCase format = WordCase.None)
+        {
+            int subIndex = LookForSubtype(subtype);
+            if (subIndex == -1)
+            {
+                return Error("SubtypeNotFound({0})", subtype);
+            }
+            int index = PickByWeight(className, rand);
+            if (className == "")
+            {
+                if (subIndex > _words[index].SubCount - 1)
+                {
+                    return Error("SubtypeOutOfRange");
+                }
+                return _words[index]
+                    .WordSet[subIndex]
+                    .Capitalize(format);
+            }
+            else
+            {
+                if (!this._classes.ContainsKey(className))
+                {
+                    return Error("ClassNotFound({0})", className);
+                }
+                return _words[this._classes[className][index]]
+                    .WordSet[subIndex]
+                    .Capitalize(format);
+            }
+        }
+
+        /// <summary>
+        /// Gets a random word that belongs to a list of classes.
+        /// </summary>
+        /// <param name="rand">The random number generator to pass to the engine.</param>
+        /// <param name="subtype">The desired subtype.</param>
+        /// <param name="format">The formatting to use.</param>
+        /// <param name="classNames">The classes from which to get the word.</param>
+        /// <returns></returns>
+        public string GetRandomWordMultiClass(ManRandom rand, string subtype, WordCase format, params string[] classNames)
+        {
+            int subIndex = LookForSubtype(subtype);
+            if (subIndex == -1)
+            {
+                return Error("SubtypeNotFound({0})", subtype);
+            }
+            for (int i = 0; i < classNames.Length; i++)
+            {
+                if (!this._classes.ContainsKey(classNames[i]))
+                {
+                    return Error("ClassNotFound({0})", classNames[i]);
+                }
+            }
+            List<int> mcList = GetMultiClassList(classNames);
+            if (mcList.Count == 0)
+            {
+                return Error("EmptyMultiClass");
+            }
+            int index = PickByWeight(mcList, rand);
+            return _words[mcList[index]]
+                .WordSet[subIndex]
+                .Capitalize(format);
+        }
+
+        /// <summary>
+        /// Writes the data contained in this instance to a stream.
+        /// </summary>
+        /// <param name="writer"></param>
+        public void WriteToStream(EasyWriter writer)
+        {
+            writer
+                .Write((byte)_symbol)
+                .Write(_title)
+                .Write(_description)
+                .Write(_subtypes)
+                .Write(_words.Count);
+
+            foreach (Word word in _words)
+            {
+                writer
+                    .Write(word.Weight)
+                    .Write(word.WordSet.ToArray())
+                    .Write(word.Classes.ToArray());
+            }
+        }
+
+        /// <summary>
+        /// Returns the string equivalent of this instance.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
+        {
+            return String.Format("{0} ({1})", _title, _symbol);
+        }
+
+        #region Non-public methods
 
         private void LoadLegacy(BinaryReader reader) // Load binary
         {
@@ -158,25 +339,7 @@ namespace Manhood
             }
         }
 
-        public void WriteToStream(EasyWriter writer)
-        {
-            writer
-                .Write((byte)_symbol)
-                .Write(_title)
-                .Write(_description)
-                .Write(_subtypes)
-                .Write(_words.Count);
-           
-            foreach(Word word in _words)
-            {
-                writer
-                    .Write(word.Weight)
-                    .Write(word.WordSet.ToArray())                    
-                    .Write(word.Classes.ToArray());
-            }
-        }
-
-        public void RandomizeDistWeights(ManRandom rand, int factor)
+        internal void RandomizeDistWeights(ManRandom rand, int factor)
         {
             for (int i = 0; i < _words.Count; i++)
             {
@@ -202,93 +365,6 @@ namespace Manhood
                 }
             }
             return -1;
-        }
-
-        public int GetRandomIndex(ManRandom rand, string className)
-        {
-            if (className == "")
-            {
-                return rand.Next(0, _words.Count);
-            }
-            else
-            {
-                if (!this._classes.ContainsKey(className))
-                {
-                    return -1;
-                }
-
-                return this._classes[className][rand.Next(0, this._classes[className].Count)];
-            }
-        }
-
-        public string GetWordByIndex(int index, string subtype, WordFormat format)
-        {
-            int subIndex = LookForSubtype(subtype);
-
-            if (subIndex == -1)
-            {
-                return Error("SubtypeNotFound({0})", subtype);
-            }
-            if (subIndex > _words[index].SubCount - 1)
-            {
-                return Error("InadequateSubtypeCount");
-            }
-            return _words[index].WordSet[subIndex].Capitalize(format);
-        }
-
-        public string GetRandomWord(ManRandom rand, string subtype, string className, WordFormat format)
-        {           
-            int subIndex = LookForSubtype(subtype);
-            if (subIndex == -1)
-            {
-                return Error("SubtypeNotFound({0})", subtype);
-            }
-            int index = PickByWeight(className, rand);
-            if (className == "")
-            {                
-                if (subIndex > _words[index].SubCount - 1)
-                {
-                    return Error("SubtypeOutOfRange");
-                }
-                return _words[index]
-                    .WordSet[subIndex]
-                    .Capitalize(format);
-            }
-            else
-            {
-                if (!this._classes.ContainsKey(className))
-                {
-                    return Error("ClassNotFound({0})", className);
-                }
-                return _words[this._classes[className][index]]
-                    .WordSet[subIndex]
-                    .Capitalize(format);
-            }
-        }
-
-        public string GetRandomWordMultiClass(ManRandom rand, string subtype, WordFormat format, params string[] classNames)
-        {
-            int subIndex = LookForSubtype(subtype);
-            if (subIndex == -1)
-            {
-                return Error("SubtypeNotFound({0})", subtype);
-            }
-            for (int i = 0; i < classNames.Length; i++)
-            {
-                if (!this._classes.ContainsKey(classNames[i]))
-                {
-                    return Error("ClassNotFound({0})", classNames[i]);
-                }
-            }
-            List<int> mcList = GetMultiClassList(classNames);
-            if (mcList.Count == 0)
-            {
-                return Error("EmptyMultiClass");
-            }
-            int index = PickByWeight(mcList, rand);
-            return _words[mcList[index]]
-                .WordSet[subIndex]
-                .Capitalize(format);
         }
 
         private List<int> GetMultiClassList(params string[] classNames)
@@ -410,9 +486,6 @@ namespace Manhood
             return "<" + this._symbol + ":" + String.Format(type, args) + ">";
         }
 
-        public override string ToString()
-        {
-            return String.Format("{0} ({1})", _title, _symbol);
-        }
+        #endregion
     }    
 }

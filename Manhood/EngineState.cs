@@ -9,12 +9,12 @@ namespace Manhood
     internal class EngineState
     {
         public CharReader Reader;
-        public WordFormat CurrentFormat = WordFormat.None;
-        public WordFormat AnFormat = WordFormat.None;
+        public WordCase CurrentFormat = WordCase.None;
+        public WordCase AnFormat = WordCase.None;
         public int AnIndex = -1;
-        public List<OutputGroup> OutputGroups = new List<OutputGroup>();
+        public List<Output> ActiveOutputs = new List<Output>();
         public StringBuilder Buffer;
-        public OutputCollection Output;
+        public OutputGroup Output;
         public ManRandom RNG;
 
         private char
@@ -36,12 +36,12 @@ namespace Manhood
         public EngineState()
         {
             Reader = null;
-            OutputGroups = new List<OutputGroup>();
+            ActiveOutputs = new List<Output>();
             Buffer = new StringBuilder();
-            Output = new OutputCollection();
+            Output = new OutputGroup();
         }
 
-        public void Start(ManRandom rng, OutputCollection oc, string pattern)
+        public void Start(ManRandom rng, OutputGroup oc, string pattern)
         {
             RNG = rng;
             Output = oc;
@@ -52,8 +52,8 @@ namespace Manhood
             SelectorUniformIDs.Clear();
             Carriers.Clear();
             Repeaters.Clear();
-            OutputGroups.Clear();
-            OutputGroups.Add(new OutputGroup("main", 0, Reader.Source.Length));
+            ActiveOutputs.Clear();
+            ActiveOutputs.Add(new Output("main", 0, Reader.Source.Length));
 
             CurrentUID = -1;
         }
@@ -68,7 +68,7 @@ namespace Manhood
             Buffer.Append(content);
         }
 
-        public void FormatBuffer(WordFormat format)
+        public void FormatBuffer(WordCase format)
         {
             string str = Buffer.ToString();
             Buffer.Clear();

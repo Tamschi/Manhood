@@ -9,7 +9,7 @@ using System.Drawing;
 
 namespace Manhood
 {
-    public static class Extensions
+    internal static class Extensions
     {
         public static sbyte RotL(this sbyte data, int times)
         {
@@ -76,18 +76,21 @@ namespace Manhood
             return (ulong)((data >> (times % 64)) | (data << (64 - (times % 64))));
         }
 
+        [Obsolete]
         public static string ReadLongString(this BinaryReader reader)
         {
             int length = reader.ReadInt32();
             return Encoding.ASCII.GetString(reader.ReadBytes(length));
         }
 
+        [Obsolete]
         public static void WriteLongString(this BinaryWriter writer, string value)
         {
             writer.Write(value.Length);
             writer.Write(Encoding.ASCII.GetBytes(value));
         }
 
+        [Obsolete]
         public static string[] ReadStringArray(this BinaryReader reader)
         {
             int count = reader.ReadInt32();
@@ -99,6 +102,7 @@ namespace Manhood
             return list;
         }
 
+        [Obsolete]
         public static void WriteStringArray(this BinaryWriter writer, string[] array)
         {
             writer.Write(array.Length);
@@ -129,36 +133,17 @@ namespace Manhood
             return lineNum;
         }
 
-        public static string ToRoman(this int number)
-        {
-            if ((number < 0) || (number > 3999)) throw new ArgumentOutOfRangeException("insert value betwheen 1 and 3999");
-            if (number < 1) return string.Empty;
-            if (number >= 1000) return "M" + ToRoman(number - 1000);
-            if (number >= 900) return "CM" + ToRoman(number - 900);
-            if (number >= 500) return "D" + ToRoman(number - 500);
-            if (number >= 400) return "CD" + ToRoman(number - 400);
-            if (number >= 100) return "C" + ToRoman(number - 100);
-            if (number >= 90) return "XC" + ToRoman(number - 90);
-            if (number >= 50) return "L" + ToRoman(number - 50);
-            if (number >= 40) return "XL" + ToRoman(number - 40);
-            if (number >= 10) return "X" + ToRoman(number - 10);
-            if (number >= 9) return "IX" + ToRoman(number - 9);
-            if (number >= 5) return "V" + ToRoman(number - 5);
-            if (number >= 4) return "IV" + ToRoman(number - 4);
-            if (number >= 1) return "I" + ToRoman(number - 1);
-            throw new ArgumentOutOfRangeException("something bad happened");
-        }
-        public static string Capitalize(this string str, WordFormat capFormat)
+        public static string Capitalize(this string str, WordCase capFormat)
         {
             switch(capFormat)
             {
-                case WordFormat.AllCaps:
+                case WordCase.AllCaps:
                     return str.ToUpper();
-                case WordFormat.Capitalized:
+                case WordCase.Capitalized:
                     return Regex.Replace(str, @"^\w", m => m.Value.ToUpper());
-                case WordFormat.Proper:
+                case WordCase.Proper:
                     return Regex.Replace(str, @"\b\w", m => m.Value.ToUpper());
-                case WordFormat.None:
+                case WordCase.None:
                 default:
                     return str;
             }

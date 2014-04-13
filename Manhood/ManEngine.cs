@@ -9,6 +9,9 @@ using System.Globalization;
 
 namespace Manhood
 {
+    /// <summary>
+    /// Used to load content files and intrepret Manhood patterns.
+    /// </summary>
     public partial class ManEngine
     {
         Dictionary<char, WordList> wordBank;
@@ -18,12 +21,19 @@ namespace Manhood
         List<string> flagsGlobal, flagsLocal;
         StringBuilder errorLog;
 
+        /// <summary>
+        /// Initializes a new instance of the Manhood.ManEngine class and loads the content at the specified path.
+        /// </summary>
+        /// <param name="packPath">The path to the content pack to load.</param>
         public ManEngine(string packPath)
         {
             Init();
             Load(packPath);
         }
 
+        /// <summary>
+        /// Initalizes a new instance of the Manhood.ManEngine class.
+        /// </summary>
         public ManEngine()
         {
             Init();
@@ -42,19 +52,135 @@ namespace Manhood
             patternScriptBank = new Dictionary<string, string>();
         }
 
+        /// <summary>
+        /// Gets the word bank loaded by the engine.
+        /// </summary>
+        public Dictionary<char, WordList> WordBank
+        {
+            get { return wordBank; }
+        }
+
+        /// <summary>
+        /// Gets the definitions loaded by the engine.
+        /// </summary>
+        public Dictionary<string, Definition> Definitions
+        {
+            get { return defBank; }
+        }
+
+        /// <summary>
+        /// Gets the current error log.
+        /// </summary>
+        public StringBuilder ErrorLog
+        {
+            get { return errorLog; }
+        }
+
+        /// <summary>
+        /// Interprets globals and stores their values.
+        /// </summary>
+        /// <param name="rand">The random number generator to pass to the interpreter.</param>
+        public void AssignGlobals(ManRandom rand) // redo in interpreter locally
+        {
+            foreach (KeyValuePair<string, Definition> entry in defBank)
+            {
+                var ogc = new OutputGroup();
+                Interpret(rand, ogc, entry.Value.Body);
+                entry.Value.State = ogc.ToString();
+            }
+        }
+
+        /// <summary>
+        /// Generates output from a pattern string.
+        /// </summary>
+        /// <param name="random">The random number generator to pass to the interpreter.</param>
+        /// <param name="pattern">The pattern to interpret.</param>
+        /// <returns></returns>
+        public string GenerateFromPattern(ManRandom random, string pattern)
+        {
+            errorLog.Clear();
+            var ogc = new OutputGroup();
+
+            Interpret(random, ogc, pattern);
+
+            return ogc.ToString();
+        }
+
+        /// <summary>
+        /// Generates an output collection from a pattern string.
+        /// </summary>
+        /// <param name="random">The random number generator to pass to the interpreter.</param>
+        /// <param name="pattern">The pattern to interpret.</param>
+        /// <returns></returns>
+        public OutputGroup GenerateOGC(ManRandom random, string pattern)
+        {
+            errorLog.Clear();
+            var ogc = new OutputGroup();
+
+            Interpret(random, ogc, pattern);
+
+            return ogc;
+        }
+
+        /// <summary>
+        /// Expands the definitions used in the specified pattern and returns the result.
+        /// </summary>
+        /// <param name="pattern">The pattern to expand.</param>
+        /// <returns></returns>
+        public string Expand(string pattern)
+        {
+            return TranslateDefs(pattern, "");
+        }
+
+        /// <summary>
+        /// Gets a global flag.
+        /// </summary>
+        /// <param name="flagName">The name of the flag.</param>
+        public void SetGlobalFlag(string flagName)
+        {
+            if (!flagsGlobal.Contains(flagName))
+            {
+                flagsGlobal.Add(flagName);
+            }
+        }
+
+        /// <summary>
+        /// Unsets a global flag.
+        /// </summary>
+        /// <param name="flagName">The name of the flag.</param>
+        public void UnsetGlobalFlag(string flagName)
+        {
+            if (flagsGlobal.Contains(flagName))
+            {
+                flagsGlobal.Remove(flagName);
+            }
+        }
+
+        /// <summary>
+        /// Returns the set status of a global flag.
+        /// </summary>
+        /// <param name="flagName">The name of the flag.</param>
+        /// <returns></returns>
+        public bool CheckGlobalFlag(string flagName)
+        {
+            return flagsGlobal.Contains(flagName);
+        }
+
+        #region Non-public methods
+
         private void Load(string packPath)
         {
-            using(EasyReader reader = new EasyReader(packPath))
+            using (EasyReader reader = new EasyReader(packPath))
             {
                 ContentType type;
-                while(!reader.EndOfStream)
+                while (!reader.EndOfStream)
                 {
                     switch (type = (ContentType)reader.ReadByte())
                     {
                         case ContentType.DefTable:
                             {
                                 int count = reader.ReadInt32();
-                                for(int i = 0; i < count; i++)
+                                for (int i = 0; i < count; i++)
                                 {
                                     DefinitionType defType = reader.ReadEnum<DefinitionType>();
                                     string title = reader.ReadString();
@@ -96,75 +222,10 @@ namespace Manhood
                                     Console.WriteLine("Duplicate word list '{0}' found in {1}", list.Symbol, packPath);
                                 }
                             }
-                        break;
+                            break;
                     }
                 }
             }
-        }
-
-        public Dictionary<char, WordList> WordBank
-        {
-            get { return wordBank; }
-        }
-
-        public Dictionary<string, Definition> Definitions
-        {
-            get { return defBank; }
-        }
-
-        public StringBuilder ErrorLog
-        {
-            get { return errorLog; }
-        }
-
-        public void AssignGlobals(ManRandom rand) // redo in interpreter locally
-        {
-            foreach (KeyValuePair<string, Definition> entry in defBank)
-            {
-                var ogc = new OutputCollection();
-                Interpret(rand, ogc, entry.Value.Body);
-                entry.Value.State = ogc.ToString();
-            }
-        }
-
-        private void ChangeWeights(ManRandom rand, int distSelect)
-        {
-            foreach (KeyValuePair<char, WordList> kvp in wordBank)
-            {
-                kvp.Value.RandomizeDistWeights(rand, distSelect);
-            }
-        }
-        private void CheckPatternType(string type)
-        {
-            if (!patternBank.ContainsKey(type))
-            {
-                throw new Exception("Required pattern list is missing: " + type);
-            }
-        }
-
-        public string GenerateFromPattern(ManRandom random, string pattern)
-        {
-            errorLog.Clear();
-            var ogc = new OutputCollection();
-
-            Interpret(random, ogc, pattern);
-
-            return ogc.ToString();
-        }
-
-        public OutputCollection GenerateOGC(ManRandom random, string pattern)
-        {
-            errorLog.Clear();
-            var ogc = new OutputCollection();
-
-            Interpret(random, ogc, pattern);
-
-            return ogc;
-        }
-
-        public string Expand(string pattern)
-        {
-            return TranslateDefs(pattern, "");
         }
 
         private bool ClassExists(char symbol, string className)
@@ -207,25 +268,22 @@ namespace Manhood
             return flagsLocal.Contains(flagName);
         }
 
-        public void SetGlobalFlag(string flagName)
+        private void ChangeWeights(ManRandom rand, int distSelect)
         {
-            if (!flagsGlobal.Contains(flagName))
+            foreach (KeyValuePair<char, WordList> kvp in wordBank)
             {
-                flagsGlobal.Add(flagName);
+                kvp.Value.RandomizeDistWeights(rand, distSelect);
             }
         }
 
-        public void UnsetGlobalFlag(string flagName)
+        private void CheckPatternType(string type)
         {
-            if (flagsGlobal.Contains(flagName))
+            if (!patternBank.ContainsKey(type))
             {
-                flagsGlobal.Remove(flagName);
+                throw new Exception("Required pattern list is missing: " + type);
             }
         }
 
-        public bool CheckGlobalFlag(string flagName)
-        {
-            return flagsGlobal.Contains(flagName);
-        }
+        #endregion
     }
 }
