@@ -13,7 +13,7 @@ namespace Manhood
         const string patWordCallLegacy = @"((?:\[)(?<class>\w+)(?:\]))?(?<symbol>\w)((?:\[)(?<subtype>\w+)(?:\]))?((?:\<)(?<carrier>[\w\s]+)(?:\>))?";
 
         // +s[subtype of class for carrier]
-        const string patWordCallModern = @"((?<symbol>\w)(?:\[\s*(?<subtype>\w+)?(\s*of\s*(?<class>[\w\&\,]+))?(\s*for\s*((?<carrier>\w+)|(?:\"")(?<carrier>[\w\s]+)(?:\"")))?\s*\])?)(?<end>[^\<][^\>]|$)";
+        const string patWordCallModern = @"((?<symbol>\w)(?:\[\s*(?<subtype>\w+)?(\s*of\s*(?<class>[\w\&\,]+))?(\s*for\s*((?<carrier>\w+)|(?:\"")(?<carrier>[\w\s]+)(?:\"")))?\s*\])?)(?<end>$|[^\<][^\>]|.)";
 
         static readonly Regex regWordCallLegacy = new Regex(patWordCallLegacy, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
 
@@ -58,14 +58,14 @@ namespace Manhood
 
                 if (c == '\\' && !reader.EndOfString) // Escape character
                 {
-                    buffer = reader.ReadChar().ToString();
+                    buffer = Escape.GetChar(reader.ReadChar()).ToString();
                     goto dobuffer;
                 }
 
                 #region Output groups
                 else if (c == '<')
                 {
-                    int beginIndex = reader.Source.IndexOf(':', reader.Position);
+                    int beginIndex = reader.Find(':', reader.Position);
                     if (beginIndex == -1)
                     {
                         Error("Couldn't find output group name terminator.", reader);
@@ -100,8 +100,8 @@ namespace Manhood
                 else if (Char.IsNumber(c)) // Check if frequency indicator is here. Example: 40%{ +n[plural] are +A. }
                 {
                     int oldPos = reader.Position;
-                    int percentIndex = reader.Source.IndexOf('%', reader.Position);
-                    int nextSpace = reader.Source.IndexOf(' ', reader.Position);
+                    int percentIndex = reader.Find('%', reader.Position);
+                    int nextSpace = reader.Find(' ', reader.Position);
                     if (percentIndex > -1 && (percentIndex < nextSpace || nextSpace == -1))
                     {
                         reader.Position--; // Revert reading of first digit
@@ -206,7 +206,7 @@ namespace Manhood
                 }
                 else if (c == '*')
                 {
-                    int bracketIndex = reader.Source.IndexOf("{", reader.Position);
+                    int bracketIndex = reader.Find("{", reader.Position);
                     if (bracketIndex <= reader.Position)
                     {
                         Error("Uniform operator could not find a selector to associate with.", reader);
@@ -368,7 +368,7 @@ namespace Manhood
                 #region Functions
                 else if (c == '$')
                 {
-                    int leftBracket = reader.Source.IndexOf("[", reader.Position);
+                    int leftBracket = reader.Find("[", reader.Position);
                     if (leftBracket < 0)
                     {
                         Error("Missing '[' on function call.", reader);
@@ -673,12 +673,15 @@ namespace Manhood
         {
             CharReader pp = new CharReader(rawPattern, 0);
             string pattern = "";
+            char c = '\0';
+            char prev = '\0';
             if (rawPattern.Contains("="))
             {
                 while (!pp.EndOfString)
                 {
-                    char d = pp.ReadChar();
-                    if (d == '=')
+                    prev = c;
+                    c = pp.ReadChar();
+                    if (c == '=' && prev != '\\')
                     {
                         string name;
                         int start;
@@ -735,11 +738,10 @@ namespace Manhood
                             }
                             
                         }
-                        pp.Position++; // Skip ]  
                     }
                     else
                     {
-                        pattern += d;
+                        pattern += c;
                     }
                 }
             }

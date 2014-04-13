@@ -59,15 +59,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CharReader.cs" />
+    <Compile Include="ContentType.cs" />
     <Compile Include="Definition.cs" />
+    <Compile Include="Escape.cs" />
     <Compile Include="Extensions.cs" />
-    <Compile Include="ManEngine.Mounting.cs" />
+    <Compile Include="ManPacker.cs" />
     <Compile Include="ManRandom.cs" />
     <Compile Include="OutputGroup.cs" />
     <Compile Include="ManEngine.cs" />
     <Compile Include="OutputCollection.cs" />
     <Compile Include="Pattern.cs" />
-    <Compile Include="PatternList.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RepeaterInstance.cs" />
     <Compile Include="Word.cs" />

@@ -8,10 +8,11 @@ namespace Manhood
 {
     public class Word
     {
-        private string[] _wordSet;
+        private List<string> _wordSet;
+        private List<string> _classes;
         private int _weight, _distrWeight;
 
-        public string[] WordSet
+        public List<string> WordSet
         {
             get { return _wordSet; }
             set { _wordSet = value; }
@@ -19,7 +20,7 @@ namespace Manhood
 
         public int SubCount
         {
-            get { return _wordSet.Length; }
+            get { return _wordSet.Count; }
         }
 
         public int Weight
@@ -34,16 +35,23 @@ namespace Manhood
             set { _distrWeight = value; }
         }
 
+        public List<string> Classes
+        {
+            get { return _classes; }
+            set { _classes = value; }
+        }
+
         public int TotalWeight
         {
             get { return _weight + _distrWeight; }
         }
 
-        public Word(string[] wordSet, int weight)
+        public Word(List<string> wordSet, int weight, List<string> classes = null)
         {
             _wordSet = wordSet;
             _weight = weight;
             _distrWeight = 0;
+            _classes = classes ?? new List<string>();
         }
     }
 }

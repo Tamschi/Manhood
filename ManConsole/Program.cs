@@ -13,12 +13,14 @@ namespace ManConsole
         static void Main(string[] args)
         {
             Console.Title = "Manhood Debug Console";
-            ManEngine engine = new ManEngine(Directory.GetFiles("content", "*.moist"));
+            
+            ManEngine engine = new ManEngine("content.man");
             ManRandom rand = new ManRandom();
             string cmd = "";
             while((cmd = Prompt()) != "quit")
             {
                 PrintOGC(engine, rand, cmd);
+                Console.WriteLine(engine.ErrorLog.ToString());
             }
         }
 

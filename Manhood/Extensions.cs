@@ -171,15 +171,15 @@ namespace Manhood
             subs.Add(start);
             for (int i = start; i < str.Length; i++)
             {
-                if (str[i] == '/' && balance == 0)
+                if (str[i] == '/' && balance == 0 && (i == 0 || str[i - 1] != '\\'))
                 {
                     subs.Add(i + 1);
                 }
-                else if (str[i] == '{')
+                else if (str[i] == '{' && (i == 0 || str[i - 1] != '\\'))
                 {
                     balance++;
                 }
-                else if (str[i] == '}')
+                else if (str[i] == '}' && (i == 0 || str[i - 1] != '\\'))
                 {
                     if (balance == 0)
                     {
@@ -196,11 +196,11 @@ namespace Manhood
             int balance = 0;
             for (int i = start; i < str.Length; i++)
             {
-                if (str[i] == '<')
+                if (str[i] == '<' && (i == 0 || str[i - 1] != '\\'))
                 {
                     balance++;
                 }
-                else if (str[i] == '>')
+                else if (str[i] == '>' && (i == 0 || str[i - 1] != '\\'))
                 {
                     balance--;
                 }
@@ -217,11 +217,11 @@ namespace Manhood
             int balance = 0;
             for (int i = start; i < str.Length; i++)
             {
-                if (str[i] == '[')
+                if (str[i] == '[' && (i == 0 || str[i - 1] != '\\'))
                 {
                     balance++;
                 }
-                else if (str[i] == ']')
+                else if (str[i] == ']' && (i == 0 || str[i - 1] != '\\'))
                 {
                     balance--;
                 }
@@ -238,11 +238,11 @@ namespace Manhood
             int balance = 0;
             for (int i = start; i < str.Length; i++)
             {
-                if (str[i] == '{')
+                if (str[i] == '{' && (i == 0 || str[i - 1] != '\\'))
                 {
                     balance++;
                 }
-                else if (str[i] == '}')
+                else if (str[i] == '}' && (i == 0 || str[i - 1] != '\\'))
                 {
                     balance--;
                 }

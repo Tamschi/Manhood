@@ -61,20 +61,26 @@ namespace Manhood
 
         #endregion
 
-        public WordList(string path, ref int total)
+        private WordList()
         {
-            using (BinaryReader reader = new BinaryReader(File.Open(path, FileMode.Open)))
-            {
-                LoadLegacy(reader, ref total);
-            }
+
         }
 
-        public WordList(BinaryReader reader, ref int total)
+        public static WordList LoadModernList(EasyReader reader)
         {
-            LoadLegacy(reader, ref total);
+            var list = new WordList();
+            list.LoadModern(reader);
+            return list;
         }
 
-        private void LoadLegacy(BinaryReader reader, ref int total) // Load binary
+        public static WordList LoadLegacyList(BinaryReader reader)
+        {
+            var list = new WordList();
+            list.LoadLegacy(reader);
+            return list;
+        }
+
+        private void LoadLegacy(BinaryReader reader) // Load binary
         {
             _classes = new Dictionary<string, List<int>>();
             _symbol = reader.ReadChar();
@@ -110,68 +116,64 @@ namespace Manhood
                     }
                 }
 
-                _words.Add(new Word(entrySubtypeArray, entryWeight));
+                _words.Add(new Word(entrySubtypeArray.ToList(), entryWeight, entryClassArray.ToList()));
             }
-            total += itemCount;
         }
 
         private void LoadModern(EasyReader reader)
         {
-            _classes = new Dictionary<string, List<int>>();
-            var classArray = reader.ReadStringArray();
-            foreach(string str in classArray)
-            {
-                _classes.Add(str, new List<int>());
-            }
-
             int itemCount;
+            byte symbolByte;
 
+            // Read metadata
             reader
-                .ReadChar(out _symbol)
+                .ReadByte(out symbolByte)
                 .ReadString(out _title)
                 .ReadString(out _description)
                 .ReadStringArray(out _subtypes)
                 .ReadInt32(out itemCount);
 
+            _symbol = (char)symbolByte;
+            
+            // Read entries
             _words = new List<Word>(itemCount);
+            _classes = new Dictionary<string, List<int>>();
 
             for(int i = 0; i < itemCount; i++)
             {
-                var entries = reader.ReadStringArray();
                 int w = reader.ReadInt32();
-                Word word = new Word(entries, w);
-                foreach(int cIndex in reader.ReadArray<int>())
+                var entries = reader.ReadStringArray().ToList();
+                var cl = reader.ReadStringArray().ToList();
+                Word word = new Word(entries, w, cl);
+                
+                foreach(string c in cl)
                 {
-                    _classes[classArray[cIndex]].Add(i);
+                    if (!_classes.ContainsKey(c))
+                    {
+                        _classes.Add(c, new List<int>());
+                    }
+                    _classes[c].Add(i);
                 }
                 _words.Add(word);
             }
         }
 
-        public bool Merge(WordList list)
+        public void WriteToStream(EasyWriter writer)
         {
-            if (list.Subtypes.Length != this.Subtypes.Length)
+            writer
+                .Write((byte)_symbol)
+                .Write(_title)
+                .Write(_description)
+                .Write(_subtypes)
+                .Write(_words.Count);
+           
+            foreach(Word word in _words)
             {
-                return false;
+                writer
+                    .Write(word.Weight)
+                    .Write(word.WordSet.ToArray())                    
+                    .Write(word.Classes.ToArray());
             }
-
-            int offset = _words.Count; // Move merged class indices forward by old list length to make sure they point to the right words
-
-            _words.AddRange(list._words);
-
-            foreach(KeyValuePair<string, List<int>> pair in list._classes)
-            {
-                if (this._classes.ContainsKey(pair.Key))
-                {
-                    this._classes[pair.Key].AddRange(pair.Value.Select(n => n + offset));
-                }
-                else
-                {
-                    this._classes.Add(pair.Key, pair.Value.Select(n => n + offset).ToList());
-                }
-            }
-
-            return true;
         }
 
         public void RandomizeDistWeights(ManRandom rand, int factor)

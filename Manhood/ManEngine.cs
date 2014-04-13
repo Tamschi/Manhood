@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.IO;
+using EasyIO;
 using System.Globalization;
 
 namespace Manhood
@@ -11,21 +12,16 @@ namespace Manhood
     public partial class ManEngine
     {
         Dictionary<char, WordList> wordBank;
-        Dictionary<string, PatternList> patternBank;
+        Dictionary<string, Pattern> patternBank;
         Dictionary<string, Definition> defBank;
         Dictionary<string, string> patternScriptBank;
-        List<string> flagsGlobal;
-        List<string> flagsLocal;
+        List<string> flagsGlobal, flagsLocal;
         StringBuilder errorLog;
 
-        public ManEngine(string[] mount)
+        public ManEngine(string packPath)
         {
             Init();
-
-            foreach (string addon in mount)
-            {
-                MountLegacy(addon);
-            }
+            Load(packPath);
         }
 
         public ManEngine()
@@ -39,9 +35,69 @@ namespace Manhood
             flagsGlobal = new List<string>();
             flagsLocal = new List<string>();
             wordBank = new Dictionary<char, WordList>();
-            patternBank = new Dictionary<string, PatternList>();
+            patternBank = new Dictionary<string, Pattern>();
             defBank = new Dictionary<string, Definition>();
             patternScriptBank = new Dictionary<string, string>();
+        }
+
+        private void Load(string packPath)
+        {
+            using(EasyReader reader = new EasyReader(packPath))
+            {
+                ContentType type;
+                while(!reader.EndOfStream)
+                {
+                    switch (type = (ContentType)reader.ReadByte())
+                    {
+                        case ContentType.DefTable:
+                            {
+                                int count = reader.ReadInt32();
+                                for(int i = 0; i < count; i++)
+                                {
+                                    DefinitionType defType = reader.ReadEnum<DefinitionType>();
+                                    string title = reader.ReadString();
+                                    string body = reader.ReadString();
+                                    if (!defBank.ContainsKey(title))
+                                    {
+                                        defBank.Add(title, new Definition(defType, title, body));
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("Duplicate def '{0}' found in {1}", title, packPath);
+                                    }
+                                }
+                            }
+                            break;
+                        case ContentType.Pattern:
+                            {
+                                string title = reader.ReadString();
+                                string body = reader.ReadString();
+                                if (!patternBank.ContainsKey(title))
+                                {
+                                    patternBank.Add(title, new Pattern(title, body));
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Duplicate pattern '{0}' found in {1}", title, packPath);
+                                }
+                            }
+                            break;
+                        case ContentType.Vocabulary:
+                            {
+                                WordList list = WordList.LoadModernList(reader);
+                                if (!wordBank.ContainsKey(list.Symbol))
+                                {
+                                    wordBank.Add(list.Symbol, list);
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Duplicate word list '{0}' found in {1}", list.Symbol, packPath);
+                                }
+                            }
+                        break;
+                    }
+                }
+            }
         }
 
         public Dictionary<char, WordList> WordBank
@@ -82,16 +138,6 @@ namespace Manhood
             {
                 throw new Exception("Required pattern list is missing: " + type);
             }
-        }
-
-        public string GenerateFromSymbol(ManRandom rand, string type)
-        {
-            errorLog.Clear();
-            var ogc = new OutputCollection();
-
-            GenerateFromPattern(rand, ogc, patternBank[type]);
-
-            return ogc.ToString();
         }
 
         public string GenerateFromPattern(ManRandom random, string pattern)
@@ -178,31 +224,6 @@ namespace Manhood
         public bool CheckGlobalFlag(string flagName)
         {
             return flagsGlobal.Contains(flagName);
-        }
-
-        private void GenerateFromPattern(ManRandom rand, OutputCollection ogc, PatternList patterns)
-        {
-            int which = rand.Next(0, patterns.Patterns.Count);
-            string rawPattern = patterns.Patterns[which].PatternText;
-            Interpret(rand, ogc, rawPattern);
-        }
-
-        private void LoadDefinitions(DefinitionType type, string[] entries)
-        {
-            foreach(string entry in entries)
-            {
-                if (entry.StartsWith("//")) continue;
-                string[] parts = entry.Split(new string[] { "::" }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length != 2) continue;
-                if (defBank.ContainsKey(parts[0]))
-                {
-                    defBank[parts[0]] = new Definition(type, parts[0], parts[1]);
-                }
-                else
-                {
-                    defBank.Add(parts[0], new Definition(type, parts[0], parts[1]));
-                }
-            }
         }
     }
 }
