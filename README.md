@@ -11,6 +11,6 @@ Main features
 * Segment generated text into multiple output channels
 * Easily reuse code with macros and globals
 * Create dictionary entries with multiple variations (i.e. verb tenses)
-* Sychronize item randomization across several calls
+* Synchronize item randomization across several calls
 
 
