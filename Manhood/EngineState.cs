@@ -22,10 +22,23 @@ namespace Manhood
             prevChar = '\0';
 
         // Selector stuff
-        public int UniformSeedSalt = 0;
-        public List<int> ActiveSelectors = new List<int>();
-        public List<int> SelectorUniformIDs = new List<int>();
-        public int CurrentUID = -1;
+        public List<SelectorInfo> Selectors = new List<SelectorInfo>();
+        public Dictionary<long, NonRepeatingState> NonRepeatingSelectorStates = new Dictionary<long, NonRepeatingState>();
+
+        public SelectorInfo CurrentSelector
+        {
+            get
+            {
+                if (Selectors.Count == 0)
+                {
+                    return null;
+                }
+                else
+                {
+                    return Selectors[Selectors.Count - 1];
+                }
+            }
+        }
 
         // Carrier stuff
         public Dictionary<string, Dictionary<string, int>> Carriers = new Dictionary<string, Dictionary<string, int>>();
@@ -44,18 +57,19 @@ namespace Manhood
         public void Start(ManRandom rng, OutputGroup oc, string pattern)
         {
             RNG = rng;
+            rng.Seed = Environment.TickCount;
             Output = oc;
-            Reader = new CharReader(pattern, 0);
-            UniformSeedSalt = rng.Next(0, 1000000);
 
-            ActiveSelectors.Clear();
-            SelectorUniformIDs.Clear();
+            CurrentFormat = AnFormat = WordCase.None;
+
+            Reader = new CharReader(pattern, 0);
+
+            Selectors.Clear();
+            NonRepeatingSelectorStates.Clear();
             Carriers.Clear();
             Repeaters.Clear();
             ActiveOutputs.Clear();
             ActiveOutputs.Add(new Output("main", 0, Reader.Source.Length));
-
-            CurrentUID = -1;
         }
 
         public void WriteBuffer(string content)

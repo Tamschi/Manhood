@@ -15,9 +15,14 @@ namespace Manhood
         // +s[subtype of class for carrier]
         const string patWordCallModern = @"((?<symbol>\w)(?:\[\s*(?<subtype>\w+)?(\s*of\s*(?<class>[\w\&\,]+))?(\s*for\s*((?<carrier>\w+)|(?:\"")(?<carrier>[\w\s]+)(?:\"")))?\s*\])?)(?<end>$|[^\<][^\>]|.)";
 
+        // *u/nr.seed
+        const string patSelector = @"((?<type>\w+)\.(?<seed>\w+))?(?<start>\{)";
+
         static readonly Regex regWordCallLegacy = new Regex(patWordCallLegacy, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
 
         static readonly Regex regWordCallModern = new Regex(patWordCallModern, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
+
+        static readonly Regex regSelector = new Regex(patSelector, RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase);
         
         internal EngineState State;
 
@@ -45,6 +50,7 @@ namespace Manhood
                     case '>':
                         if (!DoOutputEnd()) return;
                         break;
+                    case '*':
                     case '{':
                         if (!DoSelectorStart()) return;
                         break;
@@ -59,15 +65,6 @@ namespace Manhood
                         }
                     case '/':
                         if (DoSelectorItemEnd())
-                        {
-                            continue;
-                        }
-                        else
-                        {
-                            return;
-                        }
-                    case '*':
-                        if (DoSelectorUniform())
                         {
                             continue;
                         }
@@ -291,80 +288,96 @@ namespace Manhood
 
         private bool DoSelectorStart()
         {
-            int end = State.Reader.Source.FindClosingCurlyBracket(State.ReadPos);
-            if (end == -1)
+            State.ReadPos--;
+            var match = regSelector.Match(State.Reader.Source, State.Reader.Position);
+            if (!match.Success)
             {
-                Error("Incomplete curly brackets. Did you forget to close a selector?", State.Reader);
+                Error("Invalid selector. Please check that your syntax is correct.", State.Reader);
                 return false;
             }
+            int start = match.Groups["start"].Index;
+            string typestr = match.Groups["type"].Value;
+            string seed = match.Groups["seed"].Value;
+            State.ReadPos = start + 1;
+            int end = State.Reader.Source.FindClosingCurlyBracket(State.ReadPos);
+
+            SelectorType type;
+            if (typestr == "u")
+            {
+                type = SelectorType.Uniform;
+            }
+            else if (typestr == "nr")
+            {
+                type = SelectorType.NonRepeating;
+            }
+            else if (typestr == "")
+            {
+                type = SelectorType.None;
+            }
+            else
+            {
+                Error("Unrecognized selector type: " + typestr, State.Reader);
+                return false;
+            }
+
+            if (end == -1)
+            {
+                Error("Selector is missing a closing bracket.", State.Reader);
+                return false;
+            }
+
             int[] startIndices = State.Reader.Source.GetSelectorSubs(State.ReadPos);
             if (startIndices.Length < 2)
             {
                 Error("Selector is empty or only has one option.", State.Reader);
                 return false;
             }
-            State.ActiveSelectors.Add(end + 1);
-            State.SelectorUniformIDs.Add(State.CurrentUID);
-            if (State.CurrentUID > -1)
+
+            State.Selectors.Add(new SelectorInfo(State.RNG, start, end, startIndices.Length, seed, type));
+            if (type != SelectorType.NonRepeating)
             {
-                ManRandom uniRand = new ManRandom(State.UniformSeedSalt + State.CurrentUID);
-                State.ReadPos = startIndices[uniRand.Next(0, startIndices.Length)];
+                State.ReadPos = startIndices[State.CurrentSelector.NextIndex()];
             }
             else
             {
-                State.ReadPos = startIndices[State.RNG.Next(0, startIndices.Length)];
+                NonRepeatingState nrs;
+                if (!State.NonRepeatingSelectorStates.TryGetValue(State.CurrentSelector.Hash, out nrs))
+                {
+                    State.NonRepeatingSelectorStates.Add(State.CurrentSelector.Hash, nrs = new NonRepeatingState(State.CurrentSelector.Hash + State.RNG.Seed, startIndices.Length));
+                }
+
+                int i = nrs.Next();
+                if (i == -1)
+                {
+                    Error("Non-repeating selector attempted to iterate over item count.", State.Reader);
+                    return false;
+                }
+                State.ReadPos = startIndices[i];
             }
-            State.CurrentUID = -1;
             return true;
         }
 
         private bool DoSelectorItemEnd()
         {
-            if (State.ActiveSelectors.Count == 0)
+            if (State.CurrentSelector == null)
             {
                 Error("Unexpected '/' found in pattern.", State.Reader);
                 return false;
             }
-            State.ReadPos = State.ActiveSelectors[State.ActiveSelectors.Count - 1];
-            State.ActiveSelectors.RemoveAt(State.ActiveSelectors.Count - 1);
-            State.SelectorUniformIDs.RemoveAt(State.SelectorUniformIDs.Count - 1);
+            State.ReadPos = State.CurrentSelector.End + 1;
+            State.Selectors.RemoveAt(State.Selectors.Count - 1);
             return true;
         }
 
         private bool DoSelectorEnd()
         {
-            if (State.ActiveSelectors.Count == 0)
+            if (State.CurrentSelector == null)
             {
                 Error("Unexpected '}' found in pattern.", State.Reader);
                 return false;
             }
 
-            State.ActiveSelectors.RemoveAt(State.ActiveSelectors.Count - 1);
-            State.SelectorUniformIDs.RemoveAt(State.SelectorUniformIDs.Count - 1);
-            return true;
-        }
-
-        private bool DoSelectorUniform()
-        {
-            int bracketIndex = State.Reader.Find("{", State.ReadPos);
-            if (bracketIndex <= State.ReadPos)
-            {
-                Error("Uniform operator could not find a selector to associate with.", State.Reader);
-                return false;
-            }
-            string strUID = State.Reader.ReadString(bracketIndex - State.ReadPos);
-            int uid;
-            if (!int.TryParse(strUID, out uid))
-            {
-                Error("Uniform ID was not a number.", State.Reader);
-                return false;
-            }
-            else if (uid < 0)
-            {
-                Error("Uniform ID's cannot be negative.", State.Reader);
-                return false;
-            }
-            State.CurrentUID = uid;
+            State.Selectors.RemoveAt(State.Selectors.Count - 1);
             return true;
         }
 

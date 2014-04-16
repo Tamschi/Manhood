@@ -38,7 +38,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="EasyIO">
-      <HintPath>..\..\..\Visual Studio 2013\Projects\EasyIO\EasyIO\bin\Release\EasyIO.dll</HintPath>
+      <HintPath>..\..\EasyIO\EasyIO\bin\Release\EasyIO.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -57,12 +57,15 @@
     <Compile Include="Extensions.cs" />
     <Compile Include="ManPacker.cs" />
     <Compile Include="ManRandom.cs" />
+    <Compile Include="NonRepeatingState.cs" />
     <Compile Include="Output.cs" />
     <Compile Include="ManEngine.cs" />
     <Compile Include="OutputGroup.cs" />
     <Compile Include="Pattern.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RepeaterInstance.cs" />
+    <Compile Include="SelectorType.cs" />
+    <Compile Include="SelectorInfo.cs" />
     <Compile Include="Word.cs" />
     <Compile Include="WordFormat.cs" />
     <Compile Include="WordList.cs" />
