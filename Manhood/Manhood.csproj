@@ -57,7 +57,7 @@
     <Compile Include="Extensions.cs" />
     <Compile Include="ManPacker.cs" />
     <Compile Include="ManRandom.cs" />
-    <Compile Include="NonRepeatingState.cs" />
+    <Compile Include="DeckSelectorState.cs" />
     <Compile Include="Output.cs" />
     <Compile Include="ManEngine.cs" />
     <Compile Include="OutputGroup.cs" />

@@ -23,7 +23,7 @@ namespace Manhood
 
         // Selector stuff
         public List<SelectorInfo> Selectors = new List<SelectorInfo>();
-        public Dictionary<long, NonRepeatingState> NonRepeatingSelectorStates = new Dictionary<long, NonRepeatingState>();
+        public Dictionary<long, DeckSelectorState> NonRepeatingSelectorStates = new Dictionary<long, DeckSelectorState>();
 
         public SelectorInfo CurrentSelector
         {

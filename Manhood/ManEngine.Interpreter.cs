@@ -306,13 +306,17 @@ namespace Manhood
             {
                 type = SelectorType.Uniform;
             }
-            else if (typestr == "nr")
+            else if (typestr == "d")
             {
-                type = SelectorType.NonRepeating;
+                type = SelectorType.Deck;
+            }
+            else if (typestr == "cd")
+            {
+                type = SelectorType.CyclicDeck;
             }
             else if (typestr == "")
             {
-                type = SelectorType.None;
+                type = SelectorType.Random;
             }
             else
             {
@@ -334,25 +338,18 @@ namespace Manhood
             }
 
             State.Selectors.Add(new SelectorInfo(State.RNG, start, end, startIndices.Length, seed, type));
-            if (type != SelectorType.NonRepeating)
+            if (type != SelectorType.Deck && type != SelectorType.CyclicDeck)
             {
-                State.ReadPos = startIndices[State.CurrentSelector.NextIndex()];
+                State.ReadPos = startIndices[State.CurrentSelector.GetIndex()];
             }
             else
             {
-                NonRepeatingState nrs;
+                DeckSelectorState nrs;
                 if (!State.NonRepeatingSelectorStates.TryGetValue(State.CurrentSelector.Hash, out nrs))
                 {
-                    State.NonRepeatingSelectorStates.Add(State.CurrentSelector.Hash, nrs = new NonRepeatingState(State.CurrentSelector.Hash + State.RNG.Seed, startIndices.Length));
+                    State.NonRepeatingSelectorStates.Add(State.CurrentSelector.Hash, nrs = new DeckSelectorState(State.CurrentSelector.Hash + State.RNG.Seed, startIndices.Length, type == SelectorType.CyclicDeck));
                 }
-
-                int i = nrs.Next();
-                if (i == -1)
-                {
-                    Error("Non-repeating selector attempted to iterate over item count.", State.Reader);
-                    return false;
-                }
-                State.ReadPos = startIndices[i];
+                State.ReadPos = startIndices[nrs.Next()];
             }
             return true;
         }

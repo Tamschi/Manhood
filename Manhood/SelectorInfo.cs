@@ -9,8 +9,8 @@ namespace Manhood
     class SelectorInfo
     {
         private long _hash;
-        private SelectorType _flags;
-        private int _index, _itemCount;
+        private SelectorType _type;
+        private int _itemCount;
         private int _start, _end;
 
         private ManRandom _rand;
@@ -21,20 +21,15 @@ namespace Manhood
             set { _hash = value; }
         }
 
-        public SelectorType Flags
+        public SelectorType Type
         {
-            get { return _flags; }
-            set { _flags = value; }
+            get { return _type; }
+            set { _type = value; }
         }
 
         public int ItemCount
         {
             get { return _itemCount; }
-        }
-
-        public int Index
-        {
-            get { return _index; }
         }
 
         public int Start
@@ -47,18 +42,14 @@ namespace Manhood
             get { return _end; }
         }
 
-        public int NextIndex()
+        public int GetIndex()
         {
-            switch(_flags)
+            switch(_type)
             {
                 case SelectorType.Uniform:
-                    return _rand.PeekAt(_hash, _itemCount);
-                case SelectorType.NonRepeating:
-                    {
-                        return _index++;
-                    }
+                    return _rand.PeekAt(_hash, _itemCount);                
+                case SelectorType.Random:
                 default:
-                case SelectorType.None:
                     return _rand.Next(_itemCount);
             }
         }
@@ -66,8 +57,7 @@ namespace Manhood
         public SelectorInfo(ManRandom rand, int start, int end, int itemCount, long hash, SelectorType flags)
         {
             _hash = hash;
-            _flags = flags;
-            _index = 0;
+            _type = flags;
             _itemCount = itemCount;
             _start = start;
             _end = end;
@@ -82,14 +72,11 @@ namespace Manhood
                 _hash *= c + 19;
                 _hash += 11;
             }
-            _flags = flags;
-            _index = 0;
+            _type = flags;
             _itemCount = itemCount;
             _start = start;
             _end = end;
             _rand = rand;
         }
-
-        
     }
 }

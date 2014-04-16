@@ -8,8 +8,9 @@ namespace Manhood
 {
     enum SelectorType
     {
-        None = 0x00,
-        Uniform = 0x01,
-        NonRepeating = 0x02
+        Random, // no name
+        Uniform, // u
+        Deck, // d
+        CyclicDeck // cd
     }
 }
