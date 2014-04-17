@@ -9,8 +9,18 @@ using EasyIO;
 
 namespace Manhood
 {
+    /// <summary>
+    /// Contains methods for converting and creating pack files.
+    /// </summary>
     public static class ManPacker
     {
+        /// <summary>
+        /// Writes Manhood content to a pack file.
+        /// </summary>
+        /// <param name="path">The path to the pack file to write.</param>
+        /// <param name="defs">The definitions to pack.</param>
+        /// <param name="vocab">The vocabulary to pack.</param>
+        /// <param name="patterns">The patterns to pack.</param>
         public static void PackToFile(string path, IEnumerable<Definition> defs, IEnumerable<WordList> vocab, IEnumerable<Pattern> patterns)
         {
             using(EasyWriter writer = new EasyWriter(path))
@@ -42,6 +52,11 @@ namespace Manhood
             }
         }
 
+        /// <summary>
+        /// Converts a legacy-formatted .moist pack to the new format.
+        /// </summary>
+        /// <param name="oldPackPath">The path to the legacy pack.</param>
+        /// <param name="newPackPath">The path at which to save the converted file.</param>
         public static void ConvertPack(string oldPackPath, string newPackPath)
         {
             using(BinaryReader reader = new BinaryReader(File.Open(oldPackPath, FileMode.Open)))
