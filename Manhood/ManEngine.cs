@@ -107,12 +107,12 @@ namespace Manhood
         }
 
         /// <summary>
-        /// Generates an output collection from a pattern string.
+        /// Generates an output group from a pattern string.
         /// </summary>
         /// <param name="random">The random number generator to pass to the interpreter.</param>
         /// <param name="pattern">The pattern to interpret.</param>
         /// <returns></returns>
-        public OutputGroup GenerateOGC(ManRandom random, string pattern)
+        public OutputGroup GenerateOutputGroup(ManRandom random, string pattern)
         {
             errorLog.Clear();
             var ogc = new OutputGroup();

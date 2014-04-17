@@ -37,7 +37,7 @@ namespace ManConsole
         {
             try
             {
-                var output = engine.GenerateOGC(rand, pattern);
+                var output = engine.GenerateOutputGroup(rand, pattern);
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 foreach (var group in output)
                 {
