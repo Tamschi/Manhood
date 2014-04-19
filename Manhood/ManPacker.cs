@@ -53,6 +53,51 @@ namespace Manhood
         }
 
         /// <summary>
+        /// Unpacks a pack file and outputs the contents to the provided lists.
+        /// </summary>
+        /// <param name="path">The path to the pack file.</param>
+        /// <param name="defs">The list to unpack definitions to.</param>
+        /// <param name="vocab">The list to unpack vocabulary to.</param>
+        /// <param name="patterns">The list to unpack patterns to.</param>
+        public static void Unpack(string path, List<Definition> defs, List<WordList> vocab, List<Pattern> patterns)
+        {
+            using (EasyReader reader = new EasyReader(path))
+            {
+                ContentType type;
+                while(!reader.EndOfStream)
+                {
+                    switch (type = (ContentType)reader.ReadByte())
+                    {
+                        case ContentType.DefTable:
+                            {
+                                int count = reader.ReadInt32();
+                                for(int i = 0; i < count; i++)
+                                {
+                                    var defType = (DefinitionType)reader.ReadByte();
+                                    string name = reader.ReadString();
+                                    string body = reader.ReadString();
+                                    defs.Add(new Definition(defType, name, body));
+                                }
+                            }
+                            break;
+                        case ContentType.Pattern:
+                            {
+                                string title = reader.ReadString();
+                                string body = reader.ReadString();
+                                patterns.Add(new Pattern(title, body));
+                            }
+                            break;
+                        case ContentType.Vocabulary:
+                            {
+                                vocab.Add(WordList.LoadModernList(reader));
+                            }
+                            break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Converts a legacy-formatted .moist pack to the new format.
         /// </summary>
         /// <param name="oldPackPath">The path to the legacy pack.</param>

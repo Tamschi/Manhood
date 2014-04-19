@@ -91,7 +91,6 @@ namespace Manhood
                 v ^= ss * gg;
                 return v;
             }
-
         }
 
         /// <summary>

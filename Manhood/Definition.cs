@@ -85,6 +85,15 @@ namespace Manhood
         {
             writer.Write(_type).Write(_name).Write(_body);
         }
+
+        /// <summary>
+        /// Returns a string representation of the definition.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
+        {
+            return String.Format("{0} ({1})", this.Name, this.Type);
+        }
     }
 
     /// <summary>

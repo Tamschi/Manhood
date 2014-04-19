@@ -17,7 +17,6 @@ namespace Manhood
         Dictionary<char, WordList> wordBank;
         Dictionary<string, Pattern> patternBank;
         Dictionary<string, Definition> defBank;
-        Dictionary<string, string> patternScriptBank;
         List<string> flagsGlobal, flagsLocal;
         StringBuilder errorLog;
 
@@ -49,7 +48,6 @@ namespace Manhood
             wordBank = new Dictionary<char, WordList>();
             patternBank = new Dictionary<string, Pattern>();
             defBank = new Dictionary<string, Definition>();
-            patternScriptBank = new Dictionary<string, string>();
         }
 
         /// <summary>
