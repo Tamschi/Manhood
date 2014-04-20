@@ -80,5 +80,24 @@ namespace Manhood
             _distrWeight = 0;
             _classes = classes ?? new List<string>();
         }
+
+        /// <summary>
+        /// Gets the display name for this entry.
+        /// </summary>
+        public string DisplayName
+        {
+            get { return this.ToString(); }
+        }
+
+        /// <summary>
+        /// Returns a string representing this instance.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
+        {
+            return String.Format("{0}{1}",
+                this.WordSet.Count > 0 ? this.WordSet[0] : "Empty Entry",
+                this.Classes.Count > 0 ? " - " + this.Classes.Count + (this.Classes.Count > 1 ? " classes" : " class") : "");
+        }
     }
 }

@@ -66,6 +66,7 @@
     <Compile Include="RepeaterInstance.cs" />
     <Compile Include="SelectorType.cs" />
     <Compile Include="SelectorInfo.cs" />
+    <Compile Include="Subtype.cs" />
     <Compile Include="Word.cs" />
     <Compile Include="WordFormat.cs" />
     <Compile Include="WordList.cs" />

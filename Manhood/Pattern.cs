@@ -50,5 +50,14 @@ namespace Manhood
         {
             return _title.Length == 0 ? "Untitled Pattern" : _title;
         }
+
+        /// <summary>
+        /// Returns an exact copy of this pattern as a separate instance.
+        /// </summary>
+        /// <returns></returns>
+        public Pattern Clone()
+        {
+            return new Pattern(this.Title, this.Body);
+        }
     }
 }

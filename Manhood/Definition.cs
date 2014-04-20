@@ -94,6 +94,15 @@ namespace Manhood
         {
             return String.Format("{0} ({1})", this.Name, this.Type);
         }
+
+        /// <summary>
+        /// Returns an exact copy of this definition as a separate instance.
+        /// </summary>
+        /// <returns></returns>
+        public Definition Clone()
+        {
+            return new Definition(this.Type, this.Name, this.Body);
+        }
     }
 
     /// <summary>

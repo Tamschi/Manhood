@@ -19,7 +19,7 @@ namespace Manhood
 
         internal string _description;
 
-        internal string[] _subtypes;
+        internal List<Subtype> _subtypes;
 
         internal Dictionary<string, List<int>> _classes;
 
@@ -75,16 +75,24 @@ namespace Manhood
         /// <summary>
         /// Gets the subtypes for this list.
         /// </summary>
-        public string[] Subtypes
+        public List<Subtype> Subtypes
         {
             get { return _subtypes; }
         }
 
         #endregion
 
-        private WordList()
+        /// <summary>
+        /// Creates an empty word list.
+        /// </summary>
+        public WordList()
         {
-
+            _subtypes = new List<Subtype>();
+            _description = "";
+            _title = "";
+            _symbol = 'A';
+            _classes = new Dictionary<string, List<int>>();
+            _words = new List<Word>();
         }
 
         /// <summary>
@@ -238,7 +246,7 @@ namespace Manhood
                 .Write((byte)_symbol)
                 .Write(_title)
                 .Write(_description)
-                .Write(_subtypes)
+                .Write(_subtypes.Select<Subtype, string>(sub => sub.Name).ToArray())
                 .Write(_words.Count);
 
             foreach (Word word in _words)
@@ -256,18 +264,18 @@ namespace Manhood
         /// <returns></returns>
         public override string ToString()
         {
-            return String.Format("{0} ({1})", _title, _symbol);
+            return String.Format("{0} ({1})", _title.Length > 0 ? _title : "Untitled List", _symbol);
         }
 
         #region Non-public methods
 
-        private void LoadLegacy(BinaryReader reader) // Load binary
+        private void LoadLegacy(BinaryReader reader)
         {
             _classes = new Dictionary<string, List<int>>();
             _symbol = reader.ReadChar();
             _title = reader.ReadLongString();
             _description = reader.ReadLongString();
-            _subtypes = reader.ReadStringArray();
+            _subtypes.AddRange(reader.ReadStringArray().Select<string, Subtype>(str => new Subtype(str)));
 
             int itemCount = reader.ReadInt32();
 
@@ -278,9 +286,9 @@ namespace Manhood
                 int entryWeight = reader.ReadInt32();
                 string[] entrySubtypeArray = reader.ReadStringArray();
                 string[] entryClassArray = reader.ReadStringArray();
-                if (this.Subtypes.Length > 0)
+                if (this.Subtypes.Count > 0)
                 {
-                    if (entrySubtypeArray.Length != this.Subtypes.Length)
+                    if (entrySubtypeArray.Length != this.Subtypes.Count)
                     {
                         throw new InvalidDataException(this._title + " - One or more entries do not have the correct number of items for the subtypes given.");
                     }
@@ -305,16 +313,18 @@ namespace Manhood
         {
             int itemCount;
             byte symbolByte;
+            string[] subs;
 
             // Read metadata
             reader
                 .ReadByte(out symbolByte)
                 .ReadString(out _title)
                 .ReadString(out _description)
-                .ReadStringArray(out _subtypes)
+                .ReadStringArray(out subs)
                 .ReadInt32(out itemCount);
 
             _symbol = (char)symbolByte;
+            _subtypes.AddRange(subs.Select<string, Subtype>(str => new Subtype(str)));
             
             // Read entries
             _words = new List<Word>(itemCount);
@@ -357,9 +367,9 @@ namespace Manhood
         private int LookForSubtype(string name)
         {
             if (name == "") return 0; // Default is first subtype for a blank name.
-            for (int i = 0; i < Subtypes.Length; i++)
+            for (int i = 0; i < Subtypes.Count; i++)
             {
-                if (Subtypes[i] == name)
+                if (Subtypes[i].Name == name)
                 {
                     return i;
                 }
