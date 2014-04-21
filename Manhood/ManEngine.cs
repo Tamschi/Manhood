@@ -59,6 +59,14 @@ namespace Manhood
         }
 
         /// <summary>
+        /// Gets the pattern bank loaded by the engine.
+        /// </summary>
+        public Dictionary<string, Pattern> PatternBank
+        {
+            get { return patternBank; }
+        }
+
+        /// <summary>
         /// Gets the definitions loaded by the engine.
         /// </summary>
         public Dictionary<string, Definition> Definitions
@@ -94,12 +102,28 @@ namespace Manhood
         /// <param name="random">The random number generator to pass to the interpreter.</param>
         /// <param name="pattern">The pattern to interpret.</param>
         /// <returns></returns>
-        public string GenerateFromPattern(ManRandom random, string pattern)
+        public string GenerateText(ManRandom random, string pattern)
         {
             errorLog.Clear();
             var ogc = new OutputGroup();
 
             Interpret(random, ogc, pattern);
+
+            return ogc.ToString();
+        }
+
+        /// <summary>
+        /// Generates output from a pattern loaded by the engine.
+        /// </summary>
+        /// <param name="random">The random number generator to pass to the interpreter.</param>
+        /// <param name="patternKey">The name of the pattern.</param>
+        /// <returns></returns>
+        public string GenerateTextFromPattern(ManRandom random, string patName)
+        {
+            errorLog.Clear();
+            var ogc = new OutputGroup();
+
+            Interpret(random, ogc, patternBank[patName].Body);
 
             return ogc.ToString();
         }
@@ -116,6 +140,22 @@ namespace Manhood
             var ogc = new OutputGroup();
 
             Interpret(random, ogc, pattern);
+
+            return ogc;
+        }
+
+        /// <summary>
+        /// Generates an output group from a pattern loaded by the engine.
+        /// </summary>
+        /// <param name="random">The random number generator to pass to the interpreter.</param>
+        /// <param name="patName">The name of the pattern.</param>
+        /// <returns></returns>
+        public OutputGroup GenerateOutputGroupFromPattern(ManRandom random, string patName)
+        {
+            errorLog.Clear();
+            var ogc = new OutputGroup();
+
+            Interpret(random, ogc, patternBank[patName].Body);
 
             return ogc;
         }
