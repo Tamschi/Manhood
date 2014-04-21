@@ -6,7 +6,7 @@ It can be used to generate character names, usernames, automated messages, HTML/
 Main features
 -----
 
-* Load dictionaries from file or memory
+* Insert words from dictionaries with filtering options
 * Add basic flow control to patterns
 * Segment generated text into multiple output channels
 * Easily reuse code with macros and globals
