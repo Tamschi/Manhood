@@ -138,7 +138,7 @@ namespace Manhood
         /// <returns></returns>
         public Definition Clone()
         {
-            return new Definition(this.Type, this.Name, this.Body);
+            return new Definition(this.Type, this.Name, this.Body, new List<string>(this.Parameters));
         }
     }
 
