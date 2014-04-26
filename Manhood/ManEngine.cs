@@ -17,6 +17,7 @@ namespace Manhood
         Dictionary<char, WordList> wordBank;
         Dictionary<string, Pattern> patternBank;
         Dictionary<string, Definition> defBank;
+        Dictionary<string, Func<ManRandom, string>> customFuncs;
         List<string> flagsGlobal, flagsLocal;
         StringBuilder errorLog;
 
@@ -45,6 +46,7 @@ namespace Manhood
             errorLog = new StringBuilder();
             flagsGlobal = new List<string>();
             flagsLocal = new List<string>();
+            customFuncs = new Dictionary<string, Func<ManRandom, string>>();
             wordBank = new Dictionary<char, WordList>();
             patternBank = new Dictionary<string, Pattern>();
             defBank = new Dictionary<string, Definition>();
@@ -72,6 +74,14 @@ namespace Manhood
         public Dictionary<string, Definition> Definitions
         {
             get { return defBank; }
+        }
+
+        /// <summary>
+        /// Gets the collection of custom functions used by this instance.
+        /// </summary>
+        public Dictionary<string, Func<ManRandom, string>> CustomFunctions
+        {
+            get { return customFuncs; }
         }
 
         /// <summary>
@@ -116,7 +126,7 @@ namespace Manhood
         /// Generates output from a pattern loaded by the engine.
         /// </summary>
         /// <param name="random">The random number generator to pass to the interpreter.</param>
-        /// <param name="patternKey">The name of the pattern.</param>
+        /// <param name="patName">The name of the pattern.</param>
         /// <returns></returns>
         public string GenerateTextFromPattern(ManRandom random, string patName)
         {
@@ -167,7 +177,7 @@ namespace Manhood
         /// <returns></returns>
         public string Expand(string pattern)
         {
-            return TranslateDefs(pattern, "");
+            return TranslateDefs(pattern);
         }
 
         /// <summary>
@@ -222,15 +232,39 @@ namespace Manhood
                                 {
                                     DefinitionType defType = reader.ReadEnum<DefinitionType>();
                                     string title = reader.ReadString();
+                                    string[] parameters = reader.ReadStringArray();
                                     string body = reader.ReadString();
+                                    bool valid = true;
+
+                                    foreach(string p in parameters)
+                                    {
+                                        if (!Definition.IsValidName(p))
+                                        {
+                                            Console.WriteLine("Failed to load def '{0}': Invalid parameter name '{1}': Names must be at least 1 character long and can only contain letters, numbers, dashes and underscores.");
+                                            valid = false;
+                                        }
+                                    }
+
+                                    if (!valid)
+                                    {
+                                        continue;
+                                    }
+
                                     if (!defBank.ContainsKey(title))
                                     {
-                                        defBank.Add(title, new Definition(defType, title, body));
+                                        try
+                                        {
+                                            defBank.Add(title, new Definition(defType, title, body, parameters.ToList()));
+                                        }
+                                        catch(Exception ex)
+                                        {
+                                            Console.WriteLine("Failed to load def '{0}': {1}", title, ex.Message);
+                                        }
                                     }
                                     else
                                     {
                                         Console.WriteLine("Duplicate def '{0}' found in {1}", title, packPath);
-                                    }
+                                    }                                
                                 }
                             }
                             break;

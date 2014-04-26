@@ -71,20 +71,34 @@ namespace Manhood
 
         public int Find(string str, int start)
         {
-            if (src.IndexOf(str, start) < 0) return -1;
-            var match = new Regex(@"(^|[^\\])(?<s>" + Regex.Escape(str) + ")", RegexOptions.ExplicitCapture).Match(src, start);
-            if (!match.Success) return -1;
-            if (match.Groups["s"].Index < start) return -1;
-            return match.Groups["s"].Index;
+            int ind;
+            if ((ind = src.IndexOf(str, start)) < 0) return -1;
+            if (start == 0)
+            {
+                return ind;
+            }
+            else if (src[ind - 1] != '\\')
+            {
+                return ind;
+            }
+
+            return -1;
         }
 
         public int Find(char c, int start)
         {
-            if (src.IndexOf(c, start) < 0) return -1;
-            var match = new Regex(@"(^|[^\\])(?<s>" + Regex.Escape(c.ToString()) + ")", RegexOptions.ExplicitCapture).Match(src, start);
-            if (!match.Success) return -1;
-            if (match.Groups["s"].Index < start) return -1;
-            return match.Groups["s"].Index;
+            int ind;
+            if ((ind = src.IndexOf(c, start)) < 0) return -1;
+            if (start == 0)
+            {
+                return ind;
+            }
+            else if (src[ind - 1] != '\\')
+            {
+                return ind;
+            }
+
+            return -1;
         }
 
         public string ReadString(int length)

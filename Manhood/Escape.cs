@@ -12,7 +12,8 @@ namespace Manhood
         {
             { 'n', '\n' },
             { 'r', '\r' },
-            { 't', '\t' }
+            { 't', '\t' },
+            { 's', ' ' },
         };
 
         public static char GetChar(char code)

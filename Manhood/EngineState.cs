@@ -57,7 +57,6 @@ namespace Manhood
         public void Start(ManRandom rng, OutputGroup oc, string pattern)
         {
             RNG = rng;
-            rng.Seed = Environment.TickCount;
             Output = oc;
 
             CurrentFormat = AnFormat = WordCase.None;

@@ -197,6 +197,28 @@ namespace Manhood
             return -1;
         }
 
+        public static bool ParseParameterList(this string str, out List<string> list)
+        {
+            list = new List<string>();
+
+            if (str == null) return false;
+            if (str.Length == 0) return false;
+
+            CharReader reader = new CharReader(str, 0);            
+            char c = '\0';
+            while(!reader.EndOfString)
+            {
+                c = reader.ReadChar();
+                if (c == '[')
+                {
+                    int end = str.FindClosingSquareBracket(reader.Position);
+                    if (end == -1) return false;                    
+                    list.Add(reader.ReadTo(end));
+                }
+            }
+            return true;
+        }
+
         public static int FindClosingSquareBracket(this string str, int start)
         {
             int balance = 0;

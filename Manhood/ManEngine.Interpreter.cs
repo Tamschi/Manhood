@@ -9,28 +9,32 @@ namespace Manhood
 {
     public partial class ManEngine
     {
-        // +[class]s[subtype]<carrier>
-        const string patWordCallLegacy = @"((?:\[)(?<class>\w+)(?:\]))?(?<symbol>\w)((?:\[)(?<subtype>\w+)(?:\]))?((?:\<)(?<carrier>[\w\s]+)(?:\>))?";
-
+        // Word call
         // +s[subtype of class for carrier]
         const string patWordCallModern = @"((?<symbol>\w)(?:\[\s*(?<subtype>\w+)?(\s*of\s*(?<class>[\w\&\,]+))?(\s*for\s*((?<carrier>\w+)|(?:\"")(?<carrier>[\w\s]+)(?:\"")))?\s*\])?)(?<end>$|[^\<][^\>]|.)";
 
-        // *u/nr.seed
+        static readonly Regex regWordCallModern = new Regex(patWordCallModern, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
+        
+        // Selector
+        // *x.seed
         const string patSelector = @"((?<type>\w+)\.(?<seed>\w+))?(?<start>\{)";
 
-        static readonly Regex regWordCallLegacy = new Regex(patWordCallLegacy, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
-
-        static readonly Regex regWordCallModern = new Regex(patWordCallModern, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
-
         static readonly Regex regSelector = new Regex(patSelector, RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase);
+
+        // Parameterized macro body
+        // MacroName [param1] [param2] ...
+        const string patMacroCall = @"(?<name>[\w_\-]+)(?<parameters>\s*\[.*)?";
+
+        static readonly Regex regMacroCall = new Regex(patMacroCall, RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase);
         
         internal EngineState State;
 
-        private void Interpret(ManRandom rand, OutputGroup output, string rawPattern)
+        private void Interpret(ManRandom rand, OutputGroup output, string pattern)
         {
             errorLog.Clear();
 
-            this.State.Start(rand, output, TranslateDefs(rawPattern, ""));
+            pattern = Regex.Replace(pattern, @"[\r\n\t]", "");
+            this.State.Start(rand, output, TranslateDefs(pattern));
 
             while (!State.Reader.EndOfString) // Read through pattern until we reach the end
             {
@@ -162,7 +166,7 @@ namespace Manhood
             if (percentIndex > -1 && (percentIndex < nextSpace || nextSpace == -1))
             {
                 State.ReadPos--; // Revert reading of first digit
-                string percentStr = State.Reader.ReadString(percentIndex - State.ReadPos);
+                string percentStr = State.Reader.ReadTo(percentIndex);
                 int percent;
                 if (!int.TryParse(percentStr, out percent))
                 {
@@ -521,13 +525,8 @@ namespace Manhood
             int endIndex = match.Groups["end"].Index;
             if (!(match.Success && match.Index == State.ReadPos))
             {
-                match = regWordCallLegacy.Match(State.Reader.Source, State.ReadPos); // Fall back to legacy and re-test
-                endIndex = match.Index + match.Length;
-                if (!(match.Success && match.Index == State.ReadPos))
-                {
-                    Warning("Invalid word call", State.Reader);
-                    return false;
-                }
+                Warning("Invalid word call", State.Reader);
+                return false;
             }
 
             var groups = match.Groups;
@@ -689,6 +688,17 @@ namespace Manhood
                     State.ReadPos = param2start;
                 }
             }
+            else if (customFuncs.ContainsKey(func))
+            {
+                try
+                {
+                    State.Buffer.Append(customFuncs[func](State.RNG));
+                }
+                catch(Exception ex)
+                {
+                    Warning("Custom function '" + func + "' threw an exception: " + ex.ToString(), State.Reader);
+                }
+            }
             else
             {
                 Error("Unrecognized flag function.", State.Reader);
@@ -734,8 +744,9 @@ namespace Manhood
             State.ClearBuffer();
         }
 
-        private string TranslateDefs(string rawPattern, string last)
+        private string TranslateDefs(string rawPattern)
         {
+            rawPattern = Regex.Replace(rawPattern, @"[\r\n\t]", "");
             CharReader pp = new CharReader(rawPattern, 0);
             string pattern = "";
             char c = '\0';
@@ -748,60 +759,71 @@ namespace Manhood
                     c = pp.ReadChar();
                     if (c == '=' && prev != '\\')
                     {
-                        string name;
+                        string macroCall;                        
                         int start;
-                        if (!pp.ReadSquareBlock(out name, out start))
+                        if (!pp.ReadSquareBlock(out macroCall, out start))
                         {
                             Error("Bad def call", pp);
                             return "";
                         }
 
-                        if (name == "")
+                        if (macroCall == "")
                         {
                             Error("Empty def.", pp);
                             return "";
                         }
-                        if (name.Contains("+"))
+
+                        var macroParts = regMacroCall.Match(macroCall);
+                        if (macroParts.Groups.Count == 0 || !macroParts.Success)
                         {
-                            string[] macroParts = name.Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
-                            if (macroParts.Length == 0)
+                            Error("Invalid or empty def.", pp);
+                            return "";
+                        }
+
+                        string macroName = macroParts.Groups["name"].Value;
+                        
+                        if (!defBank.ContainsKey(macroName))
+                        {
+                            Error("Def \"" + macroName + "\" doesn't exist.", pp);
+                            return "";
+                        }
+                        
+                        var def = defBank[macroName];
+                        string macroBody = def.Body;
+                        
+                        if (def.Parameters.Count > 0 && def.Type == DefinitionType.Macro)
+                        {
+                            if (macroParts.Length == 1)
                             {
-                                Error("Empty def.", pp);
+                                Error("Def error: This macro requires parameters, but none were specified.", pp);
                                 return "";
                             }
-                            for (int i = 0; i < macroParts.Length; i++)
+                            List<string> macroParams;
+                            if (!macroParts.Groups["parameters"].Value.ParseParameterList(out macroParams))
                             {
-                                string macroPart = macroParts[i].Trim();
-                                if (!defBank.ContainsKey(macroPart))
-                                {
-                                    Error("Def \"" + macroPart + "\" doesn't exist.", pp);
-                                    return "";
-                                }
-                                pattern += TranslateDefs(defBank[macroPart].Body, last);
+                                Error("Def error: Invalid parameter list.", pp);
+                                return "";
                             }
+                            int pCount = macroParams.Count;
+                            if (pCount != def.Parameters.Count)
+                            {
+                                Error("Def error: Parameter count mismatch. Expected " + def.Parameters.Count + ", got " + pCount + ".", pp);
+                                return "";
+                            }
+
+                            for(int i = 0; i < pCount; i++)
+                            {
+                                macroBody = Regex.Replace(macroBody, "\\&" + Regex.Escape(def.Parameters[i]) + "\\&", macroParams[i]);
+                            }
+                        }
+
+                        if (def.Type == DefinitionType.Macro)
+                        {
+                            pattern += TranslateDefs(macroBody);
                         }
                         else
                         {
-                            if (name == last)
-                            {
-                                Error("Def error: Cannot create a definition that references itself. (" + name + ")", pp);
-                                return "";
-                            }
-                            if (!defBank.ContainsKey(name))
-                            {
-                                Error("Def \"" + name + "\" doesn't exist.", pp);
-                                return "";
-                            }
-                            var def = defBank[name];
-                            if (def.Type == DefinitionType.Macro)
-                            {
-                                pattern += TranslateDefs(def.Body, name);
-                            }
-                            else
-                            {
-                                pattern += TranslateDefs(def.State, name);
-                            }
-                            
+                            pattern += TranslateDefs(def.State);
                         }
                     }
                     else

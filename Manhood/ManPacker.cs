@@ -32,6 +32,7 @@ namespace Manhood
                 {
                     writer.Write(def.Type);
                     writer.Write(def.Name);
+                    writer.Write(def.Parameters.ToArray());
                     writer.Write(def.Body);
                 }
 
@@ -40,7 +41,7 @@ namespace Manhood
                 {
                     writer.Write(ContentType.Pattern);
                     writer.Write(pat.Title);
-                    writer.Write(pat.Body);
+                    writer.Write(pat.Body);                    
                 }
 
                 // Write dictionary
@@ -75,8 +76,12 @@ namespace Manhood
                                 {
                                     var defType = (DefinitionType)reader.ReadByte();
                                     string name = reader.ReadString();
+                                    string[] parameters = reader.ReadStringArray();
                                     string body = reader.ReadString();
-                                    defs.Add(new Definition(defType, name, body));
+                                    if (Definition.IsValidName(name))
+                                    {
+                                        defs.Add(new Definition(defType, name, body, parameters.ToList()));
+                                    }
                                 }
                             }
                             break;
