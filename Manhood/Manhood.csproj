@@ -58,6 +58,7 @@
     <Compile Include="ManPacker.cs" />
     <Compile Include="ManRandom.cs" />
     <Compile Include="DeckSelectorState.cs" />
+    <Compile Include="Middleman.cs" />
     <Compile Include="Output.cs" />
     <Compile Include="ManEngine.cs" />
     <Compile Include="OutputGroup.cs" />
