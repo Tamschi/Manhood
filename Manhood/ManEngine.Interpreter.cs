@@ -26,13 +26,19 @@ namespace Manhood
 
         static readonly Regex RegMacroCall = new Regex(PatMacroCall, RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase);
 
+        const string PatComments = @"(//([^\r\n]+)(?:\r\n|\n|$)|/\*.*\*/|/\*.*)";
+
+        static readonly Regex RegComments = new Regex(PatComments, RegexOptions.Singleline);
+
         private void Interpret(ManRandom rand, OutputGroup output, string pattern)
         {
-            var patOrig = pattern;
-            pattern = Regex.Replace(pattern, @"[\r\n\t]", "");
+            pattern = RegComments.Replace(pattern, "");
+            Middleman.State.Errors = new ErrorLog(pattern, "");
+            pattern = Regex.Replace(pattern, @"[\r\n\t]", "", RegexOptions.ExplicitCapture);
+
             var patExp = TranslateDefs(pattern);
+            Middleman.State.Errors.PatternExpanded = patExp;
             Middleman.State.Start(rand, output, patExp);
-            Middleman.State.Errors = new ErrorLog(patOrig, patExp);
 
             while (!Middleman.State.Reader.EndOfString) // Read through pattern until we reach the end
             {
@@ -667,20 +673,20 @@ namespace Manhood
                         int start;
                         if (!pp.ReadSquareBlock(out macroCall, out start))
                         {
-                            Error("Bad def call");
+                            PreError(pp.Position, "Bad def call");
                             return "";
                         }
 
                         if (macroCall == "")
                         {
-                            Error("Empty def.");
+                            PreError(start, "Empty def.");
                             return "";
                         }
 
                         var macroParts = RegMacroCall.Match(macroCall);
                         if (macroParts.Groups.Count == 0 || !macroParts.Success)
                         {
-                            Error("Invalid or empty def.");
+                            PreError(start, "Invalid or empty def.");
                             return "";
                         }
 
@@ -688,7 +694,7 @@ namespace Manhood
                         
                         if (!_defBank.ContainsKey(macroName))
                         {
-                            Error("Def \"" + macroName + "\" doesn't exist.");
+                            PreError(start, "Def \"" + macroName + "\" doesn't exist.");
                             return "";
                         }
                         
@@ -699,19 +705,19 @@ namespace Manhood
                         {
                             if (macroParts.Length == 1)
                             {
-                                Error("Def error: This macro requires parameters, but none were specified.");
+                                PreError(pp.Position, "Def error: This macro requires parameters, but none were specified.");
                                 return "";
                             }
                             List<string> macroParams;
                             if (!macroParts.Groups["parameters"].Value.ParseParameterList(out macroParams))
                             {
-                                Error("Def error: Invalid parameter list.");
+                                PreError(pp.Position, "Def error: Invalid parameter list.");
                                 return "";
                             }
                             var pCount = macroParams.Count;
                             if (pCount != def.Parameters.Count)
                             {
-                                Error("Def error: Parameter count mismatch. Expected " + def.Parameters.Count + ", got " + pCount + ".");
+                                PreError(pp.Position, "Def error: Parameter count mismatch. Expected " + def.Parameters.Count + ", got " + pCount + ".");
                                 return "";
                             }
 
@@ -745,7 +751,12 @@ namespace Manhood
 
         private static void Error(string problem)
         {
-            Middleman.State.Errors.AddFromState(Middleman.State.Reader.Position, problem);
+            Middleman.State.Errors.AddFromState(ErrorType.Interpreter, Middleman.State.Reader.Position, problem);
+        }
+
+        private static void PreError(int pos, string problem)
+        {
+            Middleman.State.Errors.AddFromState(ErrorType.Preprocessor, pos, problem);
         }
 
         private static bool DoSelectorStart()

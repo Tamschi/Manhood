@@ -8,14 +8,14 @@ namespace Manhood
     internal static class Middleman
     {
         [ThreadStatic]
-        private static readonly EngineState _stateObject = new EngineState();
+        private static EngineState _stateObject;
 
         /// <summary>
         /// Gets the EngineState object for the current thread.
         /// </summary>
         public static EngineState State
         {
-            get { return _stateObject; }
+            get { return _stateObject ?? (_stateObject = new EngineState()); }
         }
     }
 }

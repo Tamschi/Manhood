@@ -9,9 +9,9 @@ namespace Manhood
     public class ErrorLog : IEnumerable<Error>
     {
         private readonly List<Error> _errorLog;
-        private readonly string _patternOrig;
-        private readonly string _patternExp;
-        private readonly string[] _patternExpLines;
+        private string _patternOrig;
+        private string _patternExp;
+        private string[] _patternExpLines, _patternOrigLines;
 
         internal ErrorLog(string patternOriginal, string patternExpanded)
         {
@@ -19,6 +19,7 @@ namespace Manhood
             _patternOrig = patternOriginal;
             _patternExp = patternExpanded;
             _patternExpLines = patternExpanded.Split(new[] { '\n' });
+            _patternOrigLines = patternOriginal.Split(new[] { '\n' });
         }
 
         /// <summary>
@@ -27,6 +28,11 @@ namespace Manhood
         public string PatternExpanded
         {
             get { return _patternExp; }
+            internal set
+            {
+                _patternExp = value;
+                _patternExpLines = _patternExp.Split(new[] { '\n' });
+            }
         }
 
         /// <summary>
@@ -43,13 +49,18 @@ namespace Manhood
         public string PatternOriginal
         {
             get { return _patternOrig; }
+            internal set
+            {
+                _patternOrig = value;
+                _patternOrigLines = _patternOrig.Split(new[] { '\n' });
+            }
         }
 
-        internal void AddFromState(int index, string msg, params object[] args)
+        internal void AddFromState(ErrorType type, int index, string msg, params object[] args)
         {
             int col;
             var line = _patternExp.GetLineNumberFromIndex(index, out col);
-            _errorLog.Add(new Error(line, col, index, msg, args));
+            _errorLog.Add(new Error(type, line, col, index, msg, args));
         }
 
         /// <summary>
@@ -60,7 +71,7 @@ namespace Manhood
         public string GetVisualError(int index)
         {
             var error = this[index];
-            var line = _patternExpLines[error.Line];
+            var line = error.Type == ErrorType.Interpreter ? _patternExpLines[error.Line] : _patternOrigLines[error.Line];
             var arrow = new string(' ', error.Column) + "^";
             return String.Concat(error.Message, "\r\n", line, "\r\n", arrow);
         }

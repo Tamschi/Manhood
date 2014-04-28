@@ -55,6 +55,7 @@
     <Compile Include="EngineState.cs" />
     <Compile Include="Error.cs" />
     <Compile Include="ErrorLog.cs" />
+    <Compile Include="ErrorType.cs" />
     <Compile Include="Escape.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="ManhoodErrorEventArgs.cs" />

@@ -241,7 +241,7 @@ namespace Manhood
                                     var defType = reader.ReadEnum<DefinitionType>();
                                     var title = reader.ReadString();
                                     var parameters = reader.ReadStringArray();
-                                    var body = reader.ReadString();
+                                    var body = RegComments.Replace(reader.ReadString(), ""); // Filter out comments
                                     var valid = true;
 
                                     foreach (var p in parameters.Where(p => !Definition.IsValidName(p)))
@@ -276,7 +276,7 @@ namespace Manhood
                         case ContentType.Pattern:
                             {
                                 var title = reader.ReadString();
-                                var body = reader.ReadString();
+                                var body = RegComments.Replace(reader.ReadString(), ""); // Filter out comments
                                 if (!_patternBank.ContainsKey(title))
                                 {
                                     _patternBank.Add(title, new Pattern(title, body));
