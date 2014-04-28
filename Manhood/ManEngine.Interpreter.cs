@@ -105,10 +105,11 @@ namespace Manhood
                     {
                         if (Char.IsNumber(Middleman.State.CurrentChar)) // Check if frequency indicator is here. Example: 40%{ +n[plural] are +A. }
                         {
-                            if (!DoFrequency())
+                            if (DoFrequency())
                             {
-                                return;
+                                continue;
                             }
+                            return;
                         }
                         
                         if (!"{}[]<>".Contains(Middleman.State.CurrentChar)) // Covers all other characters except brackets
@@ -194,6 +195,8 @@ namespace Manhood
                     }
                 }
             }
+            DoNonBrackets();
+            DoBuffer();
             return true;
         }
 
