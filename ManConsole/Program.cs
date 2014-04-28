@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
 using Manhood;
 
 namespace ManConsole
@@ -14,13 +9,20 @@ namespace ManConsole
         {
             Console.Title = "Manhood Debug Console";
             
-            ManEngine engine = new ManEngine("content\\content.man");
-            ManRandom rand = new ManRandom();
-            string cmd = "";
+            var engine = new ManEngine("content\\content.man");
+            var rand = new ManRandom();
+            engine.Errors += (sender, eventArgs) =>
+            {
+                Console.WriteLine("Errors ({0}):", eventArgs.Errors.Count);
+                foreach (var error in eventArgs.Errors)
+                {
+                    Console.WriteLine(eventArgs.Errors.GetVisualError(error));
+                }
+            };
+            string cmd;
             while((cmd = Prompt()) != "quit")
             {
-                PrintOGC(engine, rand, cmd);
-                Console.WriteLine(engine.ErrorLog.ToString());
+                PrintOutputGroup(engine, rand, cmd);
             }
         }
 
@@ -28,12 +30,12 @@ namespace ManConsole
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.Write("> ");
-            string input = Console.ReadLine();
+            var input = Console.ReadLine();
             Console.ResetColor();
             return input;
         }
 
-        static void PrintOGC(ManEngine engine, ManRandom rand, string pattern)
+        static void PrintOutputGroup(ManEngine engine, ManRandom rand, string pattern)
         {
             try
             {

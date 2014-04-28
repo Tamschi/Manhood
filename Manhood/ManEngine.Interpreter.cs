@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace Manhood
 {
@@ -11,28 +10,29 @@ namespace Manhood
     {
         // Word call
         // +s[subtype of class for carrier]
-        const string patWordCallModern = @"((?<symbol>\w)(?:\[\s*(?<subtype>\w+)?(\s*of\s*(?<class>[\w\&\,]+))?(\s*for\s*((?<carrier>\w+)|(?:\"")(?<carrier>[\w\s]+)(?:\"")))?\s*\])?)(?<end>$|[^\<][^\>]|.)";
+        const string PatWordCallModern = @"((?<symbol>\w)(?:\[\s*(?<subtype>\w+)?(\s*of\s*(?<class>[\w\&\,]+))?(\s*for\s*((?<carrier>\w+)|(?:\"")(?<carrier>[\w\s]+)(?:\"")))?\s*\])?)(?<end>$|[^\<][^\>]|.)";
 
-        static readonly Regex regWordCallModern = new Regex(patWordCallModern, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
+        static readonly Regex RegWordCallModern = new Regex(PatWordCallModern, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
         
         // Selector
         // *x.seed
-        const string patSelector = @"((?<type>\w+)\.(?<seed>\w+))?(?<start>\{)";
+        const string PatSelector = @"((?<type>\w+)\.(?<seed>\w+))?(?<start>\{)";
 
-        static readonly Regex regSelector = new Regex(patSelector, RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase);
+        static readonly Regex RegSelector = new Regex(PatSelector, RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase);
 
         // Parameterized macro body
         // MacroName [param1] [param2] ...
-        const string patMacroCall = @"(?<name>[\w_\-]+)(?<parameters>\s*\[.*)?";
+        const string PatMacroCall = @"(?<name>[\w_\-]+)(?<parameters>\s*\[.*)?";
 
-        static readonly Regex regMacroCall = new Regex(patMacroCall, RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase);
+        static readonly Regex RegMacroCall = new Regex(PatMacroCall, RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase);
 
         private void Interpret(ManRandom rand, OutputGroup output, string pattern)
         {
-            errorLog.Clear();
-
+            var patOrig = pattern;
             pattern = Regex.Replace(pattern, @"[\r\n\t]", "");
-            Middleman.State.Start(rand, output, TranslateDefs(pattern));
+            var patExp = TranslateDefs(pattern);
+            Middleman.State.Start(rand, output, patExp);
+            Middleman.State.Errors = new ErrorLog(patOrig, patExp);
 
             while (!Middleman.State.Reader.EndOfString) // Read through pattern until we reach the end
             {
@@ -61,19 +61,13 @@ namespace Manhood
                         {
                             continue;
                         }
-                        else
-                        {
-                            return;
-                        }
+                        return;
                     case '/':
                         if (DoSelectorItemEnd())
                         {
                             continue;
                         }
-                        else
-                        {
-                            return;
-                        }
+                        return;
                     case '^':
                         if (!DoRepeaterStart()) return;
                         break;
@@ -102,44 +96,34 @@ namespace Manhood
                         if (!DoRandomNumber()) continue;
                         break;
                     default:
+                    {
+                        if (Char.IsNumber(Middleman.State.CurrentChar)) // Check if frequency indicator is here. Example: 40%{ +n[plural] are +A. }
                         {
-                            if (Char.IsNumber(Middleman.State.CurrentChar)) // Check if frequency indicator is here. Example: 40%{ +n[plural] are +A. }
+                            if (DoFrequency())
                             {
-                                if (DoFrequency())
-                                {
-                                    continue;
-                                }
-                                else
-                                {
-                                    return;
-                                }
+                                continue;
                             }
-                            else if (!"{}[]<>".Contains(Middleman.State.CurrentChar)) // Covers all other characters except brackets
-                            {
-                                DoNonBrackets();
-                            }
+                            return;
                         }
+                        if (!"{}[]<>".Contains(Middleman.State.CurrentChar)) // Covers all other characters except brackets
+                        {
+                            DoNonBrackets();
+                        }
+                    }
                         break;
                 }
 
                 DoBuffer();
             }
-            flagsLocal.Clear();
+            _flagsLocal.Clear();
         }
 
-        private void DoCapsLock()
+        private static void DoCapsLock()
         {
-            if (Middleman.State.CurrentFormat == WordCase.AllCaps)
-            {
-                Middleman.State.CurrentFormat = WordCase.None;
-            }
-            else
-            {
-                Middleman.State.CurrentFormat = WordCase.AllCaps;
-            }
+            Middleman.State.CurrentFormat = Middleman.State.CurrentFormat == WordCase.AllCaps ? WordCase.None : WordCase.AllCaps;
         }
 
-        private void DoCapitalize()
+        private static void DoCapitalize()
         {
             if (Middleman.State.Reader.PeekChar() == '~')
             {
@@ -156,7 +140,7 @@ namespace Manhood
             }
         }
 
-        private bool DoFrequency()
+        private static bool DoFrequency()
         {
             int oldPos = Middleman.State.ReadPos;
             int percentIndex = Middleman.State.Reader.Find('%', Middleman.State.ReadPos);
@@ -164,7 +148,7 @@ namespace Manhood
             if (percentIndex > -1 && (percentIndex < nextSpace || nextSpace == -1))
             {
                 Middleman.State.ReadPos--; // Revert reading of first digit
-                string percentStr = Middleman.State.Reader.ReadTo(percentIndex);
+                var percentStr = Middleman.State.Reader.ReadTo(percentIndex);
                 int percent;
                 if (!int.TryParse(percentStr, out percent))
                 {
@@ -178,7 +162,7 @@ namespace Manhood
                     }
                     else if (percent <= 0)
                     {
-                        Error("0% frequency indicator detected. Why is this here?", Middleman.State.Reader);
+                        Error("0% frequency indicator detected. Why is this here?");
                         return false;
                     }
 
@@ -191,7 +175,7 @@ namespace Manhood
 
                         if (closure < 0)
                         {
-                            Error("Missing closing bracket in frequency indicator.", Middleman.State.Reader);
+                            Error("Missing closing bracket in frequency indicator.");
                             return false;
                         }
 
@@ -208,22 +192,22 @@ namespace Manhood
             return true;
         }
 
-        private bool DoOutputStart()
+        private static bool DoOutputStart()
         {
             int beginIndex = Middleman.State.Reader.Find(':', Middleman.State.ReadPos);
             if (beginIndex == -1)
             {
-                Error("Couldn't find output name terminator.", Middleman.State.Reader);
+                Error("Couldn't find output name terminator.");
                 return false;
             }
 
-            string groupName = Middleman.State.Reader.ReadTo(beginIndex).ToLower();
+            var groupName = Middleman.State.Reader.ReadTo(beginIndex).ToLower();
             Middleman.State.Reader.ReadChar(); // skip ':'
 
             int endIndex = Middleman.State.Reader.Source.FindClosingTriangleBracket(Middleman.State.ReadPos);
             if (endIndex == -1)
             {
-                Error(String.Format("Closing bracket couldn't be found for output '{0}'.", groupName), Middleman.State.Reader);
+                Error(String.Format("Closing bracket couldn't be found for output '{0}'.", groupName));
                 return false;
             }
 
@@ -231,19 +215,19 @@ namespace Manhood
             return true;
         }
 
-        private bool DoOutputEnd()
+        private static bool DoOutputEnd()
         {
             var group = Middleman.State.ActiveOutputs.LastOrDefault(gi => gi.Name.ToLower() != "main");
             if (group == null)
             {
-                Error("Output closure found with no associated instance.", Middleman.State.Reader);
+                Error("Output closure found with no associated instance.");
                 return false;
             }
             Middleman.State.ActiveOutputs.RemoveAt(Middleman.State.ActiveOutputs.Count - 1);
             return true;
         }
 
-        private void DoNonBrackets()
+        private static void DoNonBrackets()
         {
             if (Middleman.State.PrevChar == ' ' && Middleman.State.CurrentChar == 'a' && !char.IsLetterOrDigit((char)Middleman.State.Reader.PeekChar())) // YES! YES!
             {
@@ -253,11 +237,11 @@ namespace Manhood
 
             if (Middleman.State.CurrentFormat == WordCase.AllCaps || (Middleman.State.CurrentFormat == WordCase.Proper && !Char.IsLetterOrDigit(Middleman.State.PrevChar) && Middleman.State.PrevChar.PermitsCap()))
             {
-                Middleman.State.WriteBuffer(Middleman.State.CurrentChar.ToString().ToUpper());
+                Middleman.State.WriteBuffer(Middleman.State.CurrentChar.ToString(CultureInfo.InvariantCulture).ToUpper());
             }
             else if (Middleman.State.CurrentFormat == WordCase.Capitalized)
             {
-                Middleman.State.WriteBuffer(Middleman.State.CurrentChar.ToString().ToUpper());
+                Middleman.State.WriteBuffer(Middleman.State.CurrentChar.ToString(CultureInfo.InvariantCulture).ToUpper());
                 Middleman.State.CurrentFormat = WordCase.None;
             }
             else
@@ -266,101 +250,31 @@ namespace Manhood
             }
         }
 
-        private bool DoRandomNumber()
+        private static bool DoRandomNumber()
         {
             string rnBody;
             int rnStart;
-            if (Middleman.State.Reader.ReadSquareBlock(out rnBody, out rnStart))
+            if (!Middleman.State.Reader.ReadSquareBlock(out rnBody, out rnStart)) return true;
+            var m = Regex.Match(rnBody, @"(?<min>\d+)\-(?<max>\d+)", RegexOptions.ExplicitCapture);
+            if (!m.Success) return false;
+
+            if (Middleman.State.CurrentFormat == WordCase.Capitalized)
             {
-                var m = Regex.Match(rnBody, @"(?<min>\d+)\-(?<max>\d+)", RegexOptions.ExplicitCapture);
-                if (!m.Success) return false;
-
-                if (Middleman.State.CurrentFormat == WordCase.Capitalized)
-                {
-                    Middleman.State.CurrentFormat = WordCase.None;
-                }
-
-                int min = Int32.Parse(m.Groups["min"].Value);
-                int max = Int32.Parse(m.Groups["max"].Value) + 1;
-
-                Middleman.State.WriteBuffer(Middleman.State.RNG.Next(Math.Min(min, max), Math.Max(min, max)).ToString());
+                Middleman.State.CurrentFormat = WordCase.None;
             }
+
+            var min = Int32.Parse(m.Groups["min"].Value);
+            var max = Int32.Parse(m.Groups["max"].Value) + 1;
+
+            Middleman.State.WriteBuffer(Middleman.State.RNG.Next(Math.Min(min, max), Math.Max(min, max)).ToString(CultureInfo.InvariantCulture));
             return true;
         }
 
-        private bool DoSelectorStart()
-        {
-            Middleman.State.ReadPos--;
-            var match = regSelector.Match(Middleman.State.Reader.Source, Middleman.State.Reader.Position);
-            if (!match.Success)
-            {
-                Error("Invalid selector. Please check that your syntax is correct.", Middleman.State.Reader);
-                return false;
-            }
-            int start = match.Groups["start"].Index;
-            string typestr = match.Groups["type"].Value;
-            string seed = match.Groups["seed"].Value;
-            Middleman.State.ReadPos = start + 1;
-            int end = Middleman.State.Reader.Source.FindClosingCurlyBracket(Middleman.State.ReadPos);
-
-            SelectorType type;
-            if (typestr == "u")
-            {
-                type = SelectorType.Uniform;
-            }
-            else if (typestr == "d")
-            {
-                type = SelectorType.Deck;
-            }
-            else if (typestr == "cd")
-            {
-                type = SelectorType.CyclicDeck;
-            }
-            else if (typestr == "")
-            {
-                type = SelectorType.Random;
-            }
-            else
-            {
-                Error("Unrecognized selector type: " + typestr, Middleman.State.Reader);
-                return false;
-            }
-
-            if (end == -1)
-            {
-                Error("Selector is missing a closing bracket.", Middleman.State.Reader);
-                return false;
-            }
-
-            int[] startIndices = Middleman.State.Reader.Source.GetSelectorSubs(Middleman.State.ReadPos);
-            if (startIndices.Length < 2)
-            {
-                Error("Selector is empty or only has one option.", Middleman.State.Reader);
-                return false;
-            }
-
-            Middleman.State.Selectors.Add(new SelectorInfo(Middleman.State.RNG, start, end, startIndices.Length, seed, type));
-            if (type != SelectorType.Deck && type != SelectorType.CyclicDeck)
-            {
-                Middleman.State.ReadPos = startIndices[Middleman.State.CurrentSelector.GetIndex()];
-            }
-            else
-            {
-                DeckSelectorState nrs;
-                if (!Middleman.State.NonRepeatingSelectorStates.TryGetValue(Middleman.State.CurrentSelector.Hash, out nrs))
-                {
-                    Middleman.State.NonRepeatingSelectorStates.Add(Middleman.State.CurrentSelector.Hash, nrs = new DeckSelectorState(Middleman.State.CurrentSelector.Hash + Middleman.State.RNG.Seed, startIndices.Length, type == SelectorType.CyclicDeck));
-                }
-                Middleman.State.ReadPos = startIndices[nrs.Next()];
-            }
-            return true;
-        }
-
-        private bool DoSelectorItemEnd()
+        private static bool DoSelectorItemEnd()
         {
             if (Middleman.State.CurrentSelector == null)
             {
-                Error("Unexpected '/' found in pattern.", Middleman.State.Reader);
+                Error("Unexpected '/' found in pattern.");
                 return false;
             }
             Middleman.State.ReadPos = Middleman.State.CurrentSelector.End + 1;
@@ -368,11 +282,11 @@ namespace Manhood
             return true;
         }
 
-        private bool DoSelectorEnd()
+        private static bool DoSelectorEnd()
         {
             if (Middleman.State.CurrentSelector == null)
             {
-                Error("Unexpected '}' found in pattern.", Middleman.State.Reader);
+                Error("Unexpected '}' found in pattern.");
                 return false;
             }
 
@@ -385,37 +299,37 @@ namespace Manhood
             // iteration range
             if (Middleman.State.Reader.PeekChar() != '[')
             {
-                Error("Repeater iterations parameter did not have an opening bracket.", Middleman.State.Reader);
+                Error("Repeater iterations parameter did not have an opening bracket.");
                 return false;
             }
             Middleman.State.Reader.ReadChar(); // skip [
-            int rightRangeBracketIndex = Middleman.State.Reader.Source.FindClosingSquareBracket(Middleman.State.ReadPos);
+            var rightRangeBracketIndex = Middleman.State.Reader.Source.FindClosingSquareBracket(Middleman.State.ReadPos);
             if (rightRangeBracketIndex < 0)
             {
-                Error("Repeater iterations parameter did not have a closing bracket.", Middleman.State.Reader);
+                Error("Repeater iterations parameter did not have a closing bracket.");
                 return false;
             }
-            string strRangeParameter = Middleman.State.Reader.ReadString(rightRangeBracketIndex - Middleman.State.ReadPos).Trim();
+            var strRangeParameter = Middleman.State.Reader.ReadString(rightRangeBracketIndex - Middleman.State.ReadPos).Trim();
             Middleman.State.Reader.ReadChar(); // skip ]
-            int constantParam = 0;
-            int min = 0;
-            int max = 0;
+            int constantParam;
             if (!int.TryParse(strRangeParameter, out constantParam))
             {
-                string[] parts = strRangeParameter.Split(new char[] { '-' });
+                var parts = strRangeParameter.Split(new[] { '-' });
                 if (parts.Length != 2)
                 {
-                    Error("Repeater range parameter must be a pair of two numbers.", Middleman.State.Reader);
+                    Error("Repeater range parameter must be a pair of two numbers.");
                     return false;
                 }
+                int max;
+                int min;
                 if (!int.TryParse(parts[0], out min) || !int.TryParse(parts[1], out max))
                 {
-                    Error("Repeater range parameter did not contain valid numbers.", Middleman.State.Reader);
+                    Error("Repeater range parameter did not contain valid numbers.");
                     return false;
                 }
                 if (min > max || min == 0 || max == 0)
                 {
-                    Error("Repeater range must be greater than zero, and max > min.", Middleman.State.Reader);
+                    Error("Repeater range must be greater than zero, and max > min.");
                     return false;
                 }
                 constantParam = Middleman.State.RNG.Next(min, max + 1);
@@ -423,35 +337,35 @@ namespace Manhood
             // separator
             if (Middleman.State.Reader.ReadChar() != '[')
             {
-                Error("Repeater separator parameter did not have an opening bracket.", Middleman.State.Reader);
+                Error("Repeater separator parameter did not have an opening bracket.");
                 return false;
             }
-            int sepIndex = Middleman.State.ReadPos;
-            int rightSepBracketIndex = Middleman.State.Reader.Source.FindClosingSquareBracket(Middleman.State.ReadPos);
+            var sepIndex = Middleman.State.ReadPos;
+            var rightSepBracketIndex = Middleman.State.Reader.Source.FindClosingSquareBracket(Middleman.State.ReadPos);
             if (rightSepBracketIndex < 0)
             {
-                Error("Repeater separator parameter did not have a closing bracket.", Middleman.State.Reader);
+                Error("Repeater separator parameter did not have a closing bracket.");
             }
-            string strSepParameter = Middleman.State.Reader.ReadString(rightSepBracketIndex - Middleman.State.ReadPos);
-            int sepEnd = Middleman.State.ReadPos;
+            var strSepParameter = Middleman.State.Reader.ReadString(rightSepBracketIndex - Middleman.State.ReadPos);
+            var sepEnd = Middleman.State.ReadPos;
             Middleman.State.Reader.ReadChar(); // skip ]
 
             // content
             if (Middleman.State.Reader.ReadChar() != '[')
             {
-                Error("Repeater content parameter did not have an opening bracket.", Middleman.State.Reader);
+                Error("Repeater content parameter did not have an opening bracket.");
                 return false;
             }
-            int rightContentBracketIndex = Middleman.State.Reader.Source.FindClosingSquareBracket(Middleman.State.ReadPos);
+            var rightContentBracketIndex = Middleman.State.Reader.Source.FindClosingSquareBracket(Middleman.State.ReadPos);
             if (rightSepBracketIndex < 0)
             {
-                Error("Repeater content parameter did not have a closing bracket.", Middleman.State.Reader);
+                Error("Repeater content parameter did not have a closing bracket.");
             }
-            int pStart = Middleman.State.ReadPos;
+            var pStart = Middleman.State.ReadPos;
 
             Middleman.State.Reader.ReadString(rightContentBracketIndex - Middleman.State.ReadPos);
 
-            int pEnd = Middleman.State.ReadPos;
+            var pEnd = Middleman.State.ReadPos;
 
             Middleman.State.Repeaters.Add(new RepeaterInstance(pStart, pEnd, sepIndex, sepEnd, strSepParameter, constantParam));
 
@@ -464,9 +378,9 @@ namespace Manhood
 
         private bool DoRepeaterEnd()
         {
-            int repeaterCount = Middleman.State.Repeaters.Count;
-            int last = repeaterCount - 1;
-            RepeaterInstance rep = Middleman.State.Repeaters[last];
+            var repeaterCount = Middleman.State.Repeaters.Count;
+            var last = repeaterCount - 1;
+            var rep = Middleman.State.Repeaters[last];
             if (Middleman.State.ReadPos - 1 != rep.ContentEndIndex && Middleman.State.ReadPos - 1 != rep.SeparatorEndIndex)
             {
                 return true;
@@ -497,96 +411,92 @@ namespace Manhood
                     Middleman.State.Repeaters.RemoveAt(last); // Remove the last repeater if it's finished
                     return true;
                 }
+                if ((Middleman.State.Repeaters[last].Iterations + 1) % 2 == 0)
+                {
+                    UnsetLocalFlag("odd_" + repeaterCount);
+                    SetLocalFlag("even_" + repeaterCount);
+                }
                 else
                 {
-                    if ((Middleman.State.Repeaters[last].Iterations + 1) % 2 == 0)
-                    {
-                        UnsetLocalFlag("odd_" + repeaterCount);
-                        SetLocalFlag("even_" + repeaterCount);
-                    }
-                    else
-                    {
-                        SetLocalFlag("odd_" + repeaterCount);
-                        UnsetLocalFlag("even_" + repeaterCount);
-                    }
-
-                    rep.OnSeparator = true;
-                    Middleman.State.ReadPos = rep.SeparatorStartIndex; // Add separator if not
+                    SetLocalFlag("odd_" + repeaterCount);
+                    UnsetLocalFlag("even_" + repeaterCount);
                 }
+
+                rep.OnSeparator = true;
+                Middleman.State.ReadPos = rep.SeparatorStartIndex; // Add separator if not
             }
             return false;
         }
 
         private bool DoWordCall()
         {
-            var match = regWordCallModern.Match(Middleman.State.Reader.Source, Middleman.State.ReadPos);
+            var match = RegWordCallModern.Match(Middleman.State.Reader.Source, Middleman.State.ReadPos);
             int endIndex = match.Groups["end"].Index;
             if (!(match.Success && match.Index == Middleman.State.ReadPos))
             {
-                Warning("Invalid word call", Middleman.State.Reader);
+                Error("Invalid word call");
                 return false;
             }
 
             var groups = match.Groups;
-            string className = groups["class"].Value.Trim();
-            string subtype = groups["subtype"].Value.Trim();
-            string carrier = groups["carrier"].Value;
-            char symbol = groups["symbol"].Value[0];
+            var className = groups["class"].Value.Trim();
+            var subtype = groups["subtype"].Value.Trim();
+            var carrier = groups["carrier"].Value;
+            var symbol = groups["symbol"].Value[0];
 
             Middleman.State.ReadPos = endIndex;
 
-            if (!wordBank.ContainsKey(symbol)) // Make sure the symbol is registered
+            if (!_wordBank.ContainsKey(symbol)) // Make sure the symbol is registered
             {
-                Warning("Word symbol not found: '" + symbol.ToString() + "'", Middleman.State.Reader);
+                Error("Word symbol not found: '" + symbol + "'");
             }
             else if (carrier != "")
             {
-                string carrierKey = String.Format("{0}:{1}", className, symbol);
+                var carrierKey = String.Format("{0}:{1}", className, symbol);
                 Dictionary<string, int> cd;
                 if (!Middleman.State.Carriers.TryGetValue(carrierKey, out cd))
                 {
-                    cd = new Dictionary<string, int>();
-                    cd.Add(carrier, wordBank[symbol].GetRandomIndex(Middleman.State.RNG, className));
+                    cd = new Dictionary<string, int>
+                    {
+                        {carrier, _wordBank[symbol].GetRandomIndex(Middleman.State.RNG, className)}
+                    };
                     Middleman.State.Carriers.Add(carrierKey, cd);
                 }
                 else if (!cd.ContainsKey(carrier))
                 {
-                    cd.Add(carrier, wordBank[symbol].GetRandomIndex(Middleman.State.RNG, className));
+                    cd.Add(carrier, _wordBank[symbol].GetRandomIndex(Middleman.State.RNG, className));
                 }
-                Middleman.State.WriteBuffer(wordBank[symbol].GetWordByIndex(Middleman.State.Carriers[carrierKey][carrier], subtype, Middleman.State.CurrentFormat));
+                Middleman.State.WriteBuffer(_wordBank[symbol].GetWordByIndex(Middleman.State.Carriers[carrierKey][carrier], subtype, Middleman.State.CurrentFormat));
             }
             else
             {
                 if (className.Contains(","))
                 {
-                    string[] mcNames = className.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    var mcNames = className.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
                     if (mcNames.Length < 2)
                     {
-                        Error("A multi-class expression must include more than one class name in its parameters.", Middleman.State.Reader);
+                        Error("A multi-class expression must include more than one class name in its parameters.");
                         return false;
                     }
                     for (int i = 0; i < mcNames.Length; i++)
                     {
                         mcNames[i] = mcNames[i].Trim(); // this is to get rid of spaces between the class names
                     }
-                    for (int i = 0; i < mcNames.Length; i++)
+                    if (mcNames.Any(t => !ClassExists(symbol, t)))
                     {
-                        if (!ClassExists(symbol, mcNames[i]))
-                        {
-                            Error("Bad multiclass", Middleman.State.Reader);
-                            return false;
-                        }
+                        Error("Bad multiclass");
+                        return false;
                     }
-                    Middleman.State.WriteBuffer(wordBank[symbol].GetRandomWordMultiClass(Middleman.State.RNG, subtype, Middleman.State.CurrentFormat, mcNames));
+                    Middleman.State.WriteBuffer(_wordBank[symbol].GetRandomWordMultiClass(Middleman.State.RNG, subtype, Middleman.State.CurrentFormat, mcNames));
                 }
                 else if (!ClassExists(symbol, className))
                 {
-                    Warning("Class not found: " + symbol.ToString() + " -> " + className, Middleman.State.Reader);
+                    Error("Class not found: " + symbol + " -> " + className);
                 }
                 else
                 {
-                    int index = wordBank[symbol].GetRandomIndex(Middleman.State.RNG, className);
-                    Middleman.State.WriteBuffer(wordBank[symbol].GetWordByIndex(index, subtype, Middleman.State.CurrentFormat));
+                    int index = _wordBank[symbol].GetRandomIndex(Middleman.State.RNG, className);
+                    Middleman.State.WriteBuffer(_wordBank[symbol].GetWordByIndex(index, subtype, Middleman.State.CurrentFormat));
                 }
             }
             Middleman.State.FormatBuffer(Middleman.State.CurrentFormat);
@@ -618,96 +528,93 @@ namespace Manhood
             int leftBracket = Middleman.State.Reader.Find("[", Middleman.State.ReadPos);
             if (leftBracket < 0)
             {
-                Error("Missing '[' on function call.", Middleman.State.Reader);
+                Error("Missing '[' on function call.");
                 return false;
             }
             string func = Middleman.State.Reader.ReadTo(leftBracket).ToLower(),
-                param1 = "",
-                param2 = "";
+                param1,
+                param2;
 
             int
-                param1start,
-                param2start;
+                param1Start,
+                param2Start;
 
             if ((func = func.ToLower()).Contains(' '))
             {
-                Error("Function names cannot contain spaces.", Middleman.State.Reader);
+                Error("Function names cannot contain spaces.");
                 return false;
             }
 
-            if (!Middleman.State.Reader.ReadSquareBlock(out param1, out param1start))
+            if (!Middleman.State.Reader.ReadSquareBlock(out param1, out param1Start))
             {
-                Error("Invalid parameter block.", Middleman.State.Reader);
+                Error("Invalid parameter block.");
                 return false;
             }
-            Middleman.State.Reader.ReadSquareBlock(out param2, out param2start);
+            Middleman.State.Reader.ReadSquareBlock(out param2, out param2Start);
 
-            if (func == "ls")
+            switch (func)
             {
-                SetLocalFlag(param1);
-            }
-            else if (func == "lu")
-            {
-                UnsetLocalFlag(param1);
-            }
-            else if (func == "l?")
-            {
-                if (CheckLocalFlag(param1))
-                {
-                    Middleman.State.ReadPos = param2start;
-                }
-            }
-            else if (func == "l!")
-            {
-                if (!CheckLocalFlag(param1))
-                {
-                    Middleman.State.ReadPos = param2start;
-                }
-            }
-            else if (func == "gs")
-            {
-                SetGlobalFlag(param1);
-            }
-            else if (func == "gu")
-            {
-                UnsetGlobalFlag(param1);
-            }
-            else if (func == "g?")
-            {
-                if (CheckGlobalFlag(param1))
-                {
-                    Middleman.State.ReadPos = param2start;
-                }
-            }
-            else if (func == "g!")
-            {
-                if (!CheckGlobalFlag(param1))
-                {
-                    Middleman.State.ReadPos = param2start;
-                }
-            }
-            else if (customFuncs.ContainsKey(func))
-            {
-                try
-                {
-                    Middleman.State.Buffer.Append(customFuncs[func](Middleman.State.RNG));
-                }
-                catch(Exception ex)
-                {
-                    Warning("Custom function '" + func + "' threw an exception: " + ex.ToString(), Middleman.State.Reader);
-                }
-            }
-            else
-            {
-                Error("Unrecognized flag function.", Middleman.State.Reader);
-                return false;
+                case "ls":
+                    SetLocalFlag(param1);
+                    break;
+                case "lu":
+                    UnsetLocalFlag(param1);
+                    break;
+                case "l?":
+                    if (CheckLocalFlag(param1))
+                    {
+                        Middleman.State.ReadPos = param2Start;
+                    }
+                    break;
+                case "l!":
+                    if (!CheckLocalFlag(param1))
+                    {
+                        Middleman.State.ReadPos = param2Start;
+                    }
+                    break;
+                case "gs":
+                    SetGlobalFlag(param1);
+                    break;
+                case "gu":
+                    UnsetGlobalFlag(param1);
+                    break;
+                case "g?":
+                    if (CheckGlobalFlag(param1))
+                    {
+                        Middleman.State.ReadPos = param2Start;
+                    }
+                    break;
+                case "g!":
+                    if (!CheckGlobalFlag(param1))
+                    {
+                        Middleman.State.ReadPos = param2Start;
+                    }
+                    break;
+                default:
+                    if (_customFuncs.ContainsKey(func))
+                    {
+                        try
+                        {
+                            Middleman.State.Buffer.Append(_customFuncs[func](Middleman.State.RNG));
+                        }
+                        catch(Exception ex)
+                        {
+                            Error("Custom function '" + func + "' threw an exception: " + ex);
+                        }
+                    }
+                    else
+                    {
+                        Error("Unrecognized flag function.");
+                        return false;
+                    }
+                    break;
             }
             return true;
         }
 
-        private void DoBuffer()
+        private static void DoBuffer()
         {
-            int groupCount = Middleman.State.ActiveOutputs.Count;
+            var groupCount = Middleman.State.ActiveOutputs.Count;
             var currentGroup = Middleman.State.ActiveOutputs[groupCount - 1];
             var gVis = currentGroup.Visibility;
 
@@ -723,10 +630,9 @@ namespace Manhood
                     break;
                 case OutputVisibility.Internal:
                     {
-                        Output group = null;
-                        for (int i = 0; i < Middleman.State.ActiveOutputs.Count; i++)
+                        for (var i = 0; i < Middleman.State.ActiveOutputs.Count; i++)
                         {
-                            group = Middleman.State.ActiveOutputs[groupCount - (i + 1)];
+                            var group = Middleman.State.ActiveOutputs[groupCount - (i + 1)];
                             if (group.Visibility != OutputVisibility.Internal) break;
                             Middleman.State.Output[group.Name].Append(Middleman.State.BufferText);
                         }
@@ -745,10 +651,10 @@ namespace Manhood
         private string TranslateDefs(string rawPattern)
         {
             rawPattern = Regex.Replace(rawPattern, @"[\r\n\t]", "");
-            CharReader pp = new CharReader(rawPattern, 0);
-            string pattern = "";
-            char c = '\0';
-            char prev = '\0';
+            var pp = new CharReader(rawPattern, 0);
+            var pattern = "";
+            var c = '\0';
+            char prev;
             if (rawPattern.Contains("="))
             {
                 while (!pp.EndOfString)
@@ -761,55 +667,55 @@ namespace Manhood
                         int start;
                         if (!pp.ReadSquareBlock(out macroCall, out start))
                         {
-                            Error("Bad def call", pp);
+                            Error("Bad def call");
                             return "";
                         }
 
                         if (macroCall == "")
                         {
-                            Error("Empty def.", pp);
+                            Error("Empty def.");
                             return "";
                         }
 
-                        var macroParts = regMacroCall.Match(macroCall);
+                        var macroParts = RegMacroCall.Match(macroCall);
                         if (macroParts.Groups.Count == 0 || !macroParts.Success)
                         {
-                            Error("Invalid or empty def.", pp);
+                            Error("Invalid or empty def.");
                             return "";
                         }
 
-                        string macroName = macroParts.Groups["name"].Value;
+                        var macroName = macroParts.Groups["name"].Value;
                         
-                        if (!defBank.ContainsKey(macroName))
+                        if (!_defBank.ContainsKey(macroName))
                         {
-                            Error("Def \"" + macroName + "\" doesn't exist.", pp);
+                            Error("Def \"" + macroName + "\" doesn't exist.");
                             return "";
                         }
                         
-                        var def = defBank[macroName];
-                        string macroBody = def.Body;
+                        var def = _defBank[macroName];
+                        var macroBody = def.Body;
                         
                         if (def.Parameters.Count > 0 && def.Type == DefinitionType.Macro)
                         {
                             if (macroParts.Length == 1)
                             {
-                                Error("Def error: This macro requires parameters, but none were specified.", pp);
+                                Error("Def error: This macro requires parameters, but none were specified.");
                                 return "";
                             }
                             List<string> macroParams;
                             if (!macroParts.Groups["parameters"].Value.ParseParameterList(out macroParams))
                             {
-                                Error("Def error: Invalid parameter list.", pp);
+                                Error("Def error: Invalid parameter list.");
                                 return "";
                             }
-                            int pCount = macroParams.Count;
+                            var pCount = macroParams.Count;
                             if (pCount != def.Parameters.Count)
                             {
-                                Error("Def error: Parameter count mismatch. Expected " + def.Parameters.Count + ", got " + pCount + ".", pp);
+                                Error("Def error: Parameter count mismatch. Expected " + def.Parameters.Count + ", got " + pCount + ".");
                                 return "";
                             }
 
-                            for(int i = 0; i < pCount; i++)
+                            for(var i = 0; i < pCount; i++)
                             {
                                 macroBody = Regex.Replace(macroBody, "\\&" + Regex.Escape(def.Parameters[i]) + "\\&", macroParams[i]);
                             }
@@ -835,6 +741,76 @@ namespace Manhood
                 pattern = rawPattern;
             }
             return pattern;
+        }
+
+        private static void Error(string problem)
+        {
+            Middleman.State.Errors.AddFromState(Middleman.State.Reader.Position, problem);
+        }
+
+        private static bool DoSelectorStart()
+        {
+            Middleman.State.ReadPos--;
+            var match = RegSelector.Match(Middleman.State.Reader.Source, Middleman.State.Reader.Position);
+            if (!match.Success)
+            {
+                Error("Invalid selector. Please check that your syntax is correct.");
+                return false;
+            }
+            var start = match.Groups["start"].Index;
+            var typestr = match.Groups["type"].Value;
+            var seed = match.Groups["seed"].Value;
+            Middleman.State.ReadPos = start + 1;
+            var end = Middleman.State.Reader.Source.FindClosingCurlyBracket(Middleman.State.ReadPos);
+
+            SelectorType type;
+            switch (typestr)
+            {
+                case "u":
+                    type = SelectorType.Uniform;
+                    break;
+                case "d":
+                    type = SelectorType.Deck;
+                    break;
+                case "cd":
+                    type = SelectorType.CyclicDeck;
+                    break;
+                case "":
+                    type = SelectorType.Random;
+                    break;
+                default:
+                    Error("Unrecognized selector type: " + typestr);
+                    return false;
+            }
+
+            if (end == -1)
+            {
+                Error("Selector is missing a closing bracket.");
+                return false;
+            }
+
+            var startIndices = Middleman.State.Reader.Source.GetSelectorSubs(Middleman.State.ReadPos);
+            if (startIndices.Length < 2)
+            {
+                Error("Selector is empty or only has one option.");
+                return false;
+            }
+
+            Middleman.State.Selectors.Add(new SelectorInfo(Middleman.State.RNG, start, end, startIndices.Length, seed, type));
+            if (type != SelectorType.Deck && type != SelectorType.CyclicDeck)
+            {
+                Middleman.State.ReadPos = startIndices[Middleman.State.CurrentSelector.GetIndex()];
+            }
+            else
+            {
+                DeckSelectorState nrs;
+                if (!Middleman.State.NonRepeatingSelectorStates.TryGetValue(Middleman.State.CurrentSelector.Hash, out nrs))
+                {
+                    Middleman.State.NonRepeatingSelectorStates.Add(Middleman.State.CurrentSelector.Hash, nrs = new DeckSelectorState(Middleman.State.CurrentSelector.Hash + Middleman.State.RNG.Seed, startIndices.Length, type == SelectorType.CyclicDeck));
+                }
+                Middleman.State.ReadPos = startIndices[nrs.Next()];
+            }
+            return true;
         }
     }
 }

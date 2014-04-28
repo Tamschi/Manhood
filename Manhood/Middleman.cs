@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Manhood
 {
@@ -12,7 +8,7 @@ namespace Manhood
     internal static class Middleman
     {
         [ThreadStatic]
-        private static EngineState _stateObject = new EngineState();
+        private static readonly EngineState _stateObject = new EngineState();
 
         /// <summary>
         /// Gets the EngineState object for the current thread.

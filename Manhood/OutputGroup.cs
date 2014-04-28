@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Manhood
 {
@@ -12,7 +10,7 @@ namespace Manhood
     /// </summary>
     public class OutputGroup : IEnumerable
     {
-        private Dictionary<string, StringBuilder> _dict;
+        private readonly Dictionary<string, StringBuilder> _dict;
 
         /// <summary>
         /// Initializes a new instance of the Manhood.OutputGroup class.
@@ -56,7 +54,7 @@ namespace Manhood
         {
             get
             {
-                StringBuilder v = null;
+                StringBuilder v;
                 if (_dict.TryGetValue(key, out v))
                 {
                     return v;
@@ -123,7 +121,7 @@ namespace Manhood
             return _dict.GetEnumerator();
         }
 
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
             return _dict.GetEnumerator();
         }

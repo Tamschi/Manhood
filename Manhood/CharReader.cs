@@ -1,19 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 
 namespace Manhood
 {
     internal class CharReader
     {
-        string src;
-
-        public string Source
-        {
-            get { return src; }
-        }
+        public string Source { get; private set; }
 
         public int Position
         {
@@ -23,29 +14,29 @@ namespace Manhood
 
         public bool EndOfString
         {
-            get { return this.Position >= src.Length; }
+            get { return Position >= Source.Length; }
         }
 
         public CharReader(string source, int start)
         {
-            src = source;
-            this.Position = start;
+            Source = source;
+            Position = start;
         }
 
         public void Insert(int index, string content)
         {
-            src = src.Insert(index, content);
+            Source = Source.Insert(index, content);
         }
 
         public char ReadChar()
         {
-            return src[this.Position++];
+            return Source[Position++];
         }
 
         public int PeekChar()
         {
-            if (this.EndOfString) return -1;
-            return src[this.Position];
+            if (EndOfString) return -1;
+            return Source[Position];
         }
 
         public bool ReadSquareBlock(out string body, out int start)
@@ -57,27 +48,27 @@ namespace Manhood
                 return false;
             }
             ReadChar();
-            start = this.Position;
-            int close = src.FindClosingSquareBracket(this.Position);
+            start = Position;
+            var close = Source.FindClosingSquareBracket(Position);
             if (close < 0)
             {
                 body = "";
                 return false;
             }
             body = ReadTo(close);
-            this.Position++;
+            Position++;
             return true;
         }
 
         public int Find(string str, int start)
         {
             int ind;
-            if ((ind = src.IndexOf(str, start)) < 0) return -1;
+            if ((ind = Source.IndexOf(str, start, StringComparison.Ordinal)) < 0) return -1;
             if (start == 0)
             {
                 return ind;
             }
-            else if (src[ind - 1] != '\\')
+            if (Source[ind - 1] != '\\')
             {
                 return ind;
             }
@@ -88,12 +79,12 @@ namespace Manhood
         public int Find(char c, int start)
         {
             int ind;
-            if ((ind = src.IndexOf(c, start)) < 0) return -1;
+            if ((ind = Source.IndexOf(c, start)) < 0) return -1;
             if (start == 0)
             {
                 return ind;
             }
-            else if (src[ind - 1] != '\\')
+            if (Source[ind - 1] != '\\')
             {
                 return ind;
             }
@@ -103,14 +94,14 @@ namespace Manhood
 
         public string ReadString(int length)
         {
-            string temp = src.Substring(this.Position, length);
-            this.Position += length;
+            var temp = Source.Substring(Position, length);
+            Position += length;
             return temp;
         }
 
         public string ReadTo(int index)
         {
-            return ReadString(index - this.Position);
+            return ReadString(index - Position);
         }
     }
 }

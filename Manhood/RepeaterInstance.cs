@@ -1,77 +1,38 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace Manhood
+﻿namespace Manhood
 {
     class RepeaterInstance
     {
-        int _start;
-        int _end;
-        string _separator;
-        int _sepStartIndex;
-        int _sepEndIndex;
-        int _loops;
-        int _currentIteration;
-        bool _writeSeparator;
-
         public RepeaterInstance(int start, int end, int sepStart, int sepEnd, string separator, int loops)
         {
-            _start = start;
-            _end = end;
-            _sepStartIndex = sepStart;
-            _sepEndIndex = sepEnd;
-            _separator = separator;
-            _loops = loops;
-            _currentIteration = 0;
+            ContentStartIndex = start;
+            ContentEndIndex = end;
+            SeparatorStartIndex = sepStart;
+            SeparatorEndIndex = sepEnd;
+            Separator = separator;
+            MaxIterations = loops;
+            Iterations = 0;
         }
 
-        public int ContentStartIndex
-        {
-            get { return _start; }
-        }
+        public int ContentStartIndex { get; private set; }
 
-        public int SeparatorStartIndex
-        {
-            get { return _sepStartIndex; }
-        }
+        public int SeparatorStartIndex { get; private set; }
 
-        public int SeparatorEndIndex
-        {
-            get { return _sepEndIndex; }
-        }
+        public int SeparatorEndIndex { get; private set; }
 
-        public int ContentEndIndex
-        {
-            get { return _end; }
-        }
+        public int ContentEndIndex { get; private set; }
 
-        public string Separator
-        {
-            get { return _separator; }
-        }
+        public string Separator { get; private set; }
 
-        public int MaxIterations
-        {
-            get { return _loops; }
-        }
+        public int MaxIterations { get; private set; }
 
-        public int Iterations
-        {
-            get { return _currentIteration; }
-        }
+        public int Iterations { get; private set; }
 
-        public bool OnSeparator
-        {
-            get { return _writeSeparator; }
-            set { _writeSeparator = value; }
-        }
+        public bool OnSeparator { get; set; }
 
         public bool Elapse()
         {
-            _currentIteration++;
-            return _currentIteration >= _loops;
+            Iterations++;
+            return Iterations >= MaxIterations;
         }
     }
 }

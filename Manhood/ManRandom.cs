@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Security.Cryptography;
 
 namespace Manhood
 {
@@ -12,7 +8,7 @@ namespace Manhood
     /// </summary>
     public class ManRandom
     {
-        private List<SG> _sg;
+        private readonly List<SG> _sg;
 
         /// <summary>
         /// The current seed.
@@ -32,6 +28,7 @@ namespace Manhood
             set { _sg[_sg.Count - 1].Generation = value; }
         }
 
+        // ReSharper disable once InconsistentNaming
         private class SG
         {
             public long Seed, Generation;
@@ -49,8 +46,7 @@ namespace Manhood
         /// <param name="seed">The seed for the generator.</param>
         public ManRandom(long seed)
         {
-            _sg = new List<SG>();
-            _sg.Add(new SG(seed, 0));
+            _sg = new List<SG> {new SG(seed, 0)};
         }
 
         /// <summary>
@@ -83,9 +79,9 @@ namespace Manhood
         {
             unchecked
             {
-                long v = 6364136223846793005;
-                long ss = (s + 113) * 982451653 + 12345;
-                long gg = (g + 119) * 32416189717 + 98772341;
+                var v = 6364136223846793005;
+                var ss = (s + 113) * 982451653 + 12345;
+                var gg = (g + 119) * 32416189717 + 98772341;
                 v *= ss.RotR((int)gg) ^ gg.RotL((int)ss);
                 v += ss + gg;
                 v ^= ss * gg;
@@ -102,7 +98,7 @@ namespace Manhood
         {
             get
             {
-                return GetRaw(this.Seed, g);
+                return GetRaw(Seed, g);
             }
         }
 
@@ -148,7 +144,7 @@ namespace Manhood
         /// <param name="generation">The generation to branch from.</param>
         public ManRandom Branch(long generation)
         {
-            _sg.Add(new SG(GetRaw(this.Seed, this.Generation), generation));
+            _sg.Add(new SG(GetRaw(Seed, Generation), generation));
             return this;
         }
 
@@ -157,7 +153,7 @@ namespace Manhood
         /// </summary>
         public ManRandom Branch()
         {
-            _sg.Add(new SG(GetRaw(this.Seed, this.Generation), Generation));
+            _sg.Add(new SG(GetRaw(Seed, Generation), Generation));
             return this;
         }
 

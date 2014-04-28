@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Manhood
+﻿namespace Manhood
 {
     class Output
     {
@@ -17,20 +11,20 @@ namespace Manhood
             if (name.StartsWith("."))
             {
                 name = name.Substring(1);
-                this.Visibility = OutputVisibility.Private;
+                Visibility = OutputVisibility.Private;
             }
             else if (name.StartsWith("_"))
             {
                 name = name.Substring(1);
-                this.Visibility = OutputVisibility.Internal;
+                Visibility = OutputVisibility.Internal;
             }
             else
             {
-                this.Visibility = OutputVisibility.Public;
+                Visibility = OutputVisibility.Public;
             }
-            this.Name = name;
-            this.Start = start;
-            this.End = end;
+            Name = name;
+            Start = start;
+            End = end;
         }
     }
 

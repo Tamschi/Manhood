@@ -1,21 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Manhood
+﻿namespace Manhood
 {
     class DeckSelectorState
     {
-        int[] _stage;
+        readonly int[] _stage;
         int _index;
-        bool _cyclic;
-        ManRandom rand;
+        readonly bool _cyclic;
+        readonly ManRandom _rand;
 
         public DeckSelectorState(long seed, int items, bool cyclic)
         {
-            rand = new ManRandom(seed);
+            _rand = new ManRandom(seed);
             _index = 0;
             _stage = new int[items];
             _cyclic = cyclic;
@@ -25,13 +19,11 @@ namespace Manhood
 
         public int Next()
         {
-            if (_index >= _stage.Length)
+            if (_index < _stage.Length) return _stage[_index++];
+            _index = 0;
+            if (!_cyclic)
             {
-                _index = 0;
-                if (!_cyclic)
-                {
-                    ScrambleSelectorStage();
-                }
+                ScrambleSelectorStage();
             }
             return _stage[_index++];
         }
@@ -49,7 +41,7 @@ namespace Manhood
             {
                 do
                 {
-                    s = rand.Next(_stage.Length);
+                    s = _rand.Next(_stage.Length);
                 }
                 while (s == i);
 

@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Manhood
 {
@@ -16,10 +13,11 @@ namespace Manhood
         public StringBuilder Buffer;
         public OutputGroup Output;
         public ManRandom RNG;
+        public ErrorLog Errors;
 
         private char
-            currentChar = '\0',
-            prevChar = '\0';
+            _currentChar = '\0',
+            _prevChar = '\0';
 
         // Selector stuff
         public List<SelectorInfo> Selectors = new List<SelectorInfo>();
@@ -27,17 +25,7 @@ namespace Manhood
 
         public SelectorInfo CurrentSelector
         {
-            get
-            {
-                if (Selectors.Count == 0)
-                {
-                    return null;
-                }
-                else
-                {
-                    return Selectors[Selectors.Count - 1];
-                }
-            }
+            get { return Selectors.Count == 0 ? null : Selectors[Selectors.Count - 1]; }
         }
 
         // Carrier stuff
@@ -52,6 +40,7 @@ namespace Manhood
             ActiveOutputs = new List<Output>();
             Buffer = new StringBuilder();
             Output = new OutputGroup();
+            Errors = null;
         }
 
         public void Start(ManRandom rng, OutputGroup oc, string pattern)
@@ -83,7 +72,7 @@ namespace Manhood
 
         public void FormatBuffer(WordCase format)
         {
-            string str = Buffer.ToString();
+            var str = Buffer.ToString();
             Buffer.Clear();
             Buffer.Append(str.Capitalize(format));
         }
@@ -95,19 +84,19 @@ namespace Manhood
 
         public char ReadChar()
         {
-            prevChar = currentChar;
-            currentChar = Reader.ReadChar();
-            return currentChar;
+            _prevChar = _currentChar;
+            _currentChar = Reader.ReadChar();
+            return _currentChar;
         }
 
         public char CurrentChar
         {
-            get { return currentChar; }
+            get { return _currentChar; }
         }
 
         public char PrevChar
         {
-            get { return prevChar; }
+            get { return _prevChar; }
         }
 
         public int ReadPos

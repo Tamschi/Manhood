@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.IO;
 using EasyIO;
-using System.Globalization;
 
 namespace Manhood
 {
@@ -14,12 +10,16 @@ namespace Manhood
     /// </summary>
     public partial class ManEngine
     {
-        Dictionary<char, WordList> wordBank;
-        Dictionary<string, Pattern> patternBank;
-        Dictionary<string, Definition> defBank;
-        Dictionary<string, Func<ManRandom, string>> customFuncs;
-        List<string> flagsGlobal, flagsLocal;
-        StringBuilder errorLog;
+        /// <summary>
+        /// Raised when the last Manhood interpreter session encounters errors. Provides an error log.
+        /// </summary>
+        public event EventHandler<ManhoodErrorEventArgs> Errors;
+
+        Dictionary<char, WordList> _wordBank;
+        Dictionary<string, Pattern> _patternBank;
+        Dictionary<string, Definition> _defBank;
+        Dictionary<string, Func<ManRandom, string>> _customFuncs;
+        List<string> _flagsGlobal, _flagsLocal;
 
         /// <summary>
         /// Initializes a new instance of the Manhood.ManEngine class and loads the content at the specified path.
@@ -41,13 +41,12 @@ namespace Manhood
 
         private void Init()
         {
-            errorLog = new StringBuilder();
-            flagsGlobal = new List<string>();
-            flagsLocal = new List<string>();
-            customFuncs = new Dictionary<string, Func<ManRandom, string>>();
-            wordBank = new Dictionary<char, WordList>();
-            patternBank = new Dictionary<string, Pattern>();
-            defBank = new Dictionary<string, Definition>();
+            _flagsGlobal = new List<string>();
+            _flagsLocal = new List<string>();
+            _customFuncs = new Dictionary<string, Func<ManRandom, string>>();
+            _wordBank = new Dictionary<char, WordList>();
+            _patternBank = new Dictionary<string, Pattern>();
+            _defBank = new Dictionary<string, Definition>();
         }
 
         /// <summary>
@@ -55,7 +54,7 @@ namespace Manhood
         /// </summary>
         public Dictionary<char, WordList> WordBank
         {
-            get { return wordBank; }
+            get { return _wordBank; }
         }
 
         /// <summary>
@@ -63,7 +62,7 @@ namespace Manhood
         /// </summary>
         public Dictionary<string, Pattern> PatternBank
         {
-            get { return patternBank; }
+            get { return _patternBank; }
         }
 
         /// <summary>
@@ -71,7 +70,7 @@ namespace Manhood
         /// </summary>
         public Dictionary<string, Definition> Definitions
         {
-            get { return defBank; }
+            get { return _defBank; }
         }
 
         /// <summary>
@@ -79,15 +78,7 @@ namespace Manhood
         /// </summary>
         public Dictionary<string, Func<ManRandom, string>> CustomFunctions
         {
-            get { return customFuncs; }
-        }
-
-        /// <summary>
-        /// Gets the current error log.
-        /// </summary>
-        public StringBuilder ErrorLog
-        {
-            get { return errorLog; }
+            get { return _customFuncs; }
         }
 
         /// <summary>
@@ -96,7 +87,7 @@ namespace Manhood
         /// <param name="rand">The random number generator to pass to the interpreter.</param>
         public void AssignGlobals(ManRandom rand) // redo in interpreter locally
         {
-            foreach (KeyValuePair<string, Definition> entry in defBank)
+            foreach (var entry in _defBank)
             {
                 var ogc = new OutputGroup();
                 Interpret(rand, ogc, entry.Value.Body);
@@ -107,15 +98,25 @@ namespace Manhood
         /// <summary>
         /// Generates output from a pattern string.
         /// </summary>
+        /// <param name="pattern">The pattern to interpret.</param>
+        /// <returns></returns>
+        public string GenerateText(string pattern)
+        {
+            return GenerateText(new ManRandom(), pattern);
+        }
+
+        /// <summary>
+        /// Generates output from a pattern string.
+        /// </summary>
         /// <param name="random">The random number generator to pass to the interpreter.</param>
         /// <param name="pattern">The pattern to interpret.</param>
         /// <returns></returns>
         public string GenerateText(ManRandom random, string pattern)
         {
-            errorLog.Clear();
             var ogc = new OutputGroup();
 
             Interpret(random, ogc, pattern);
+            CheckForErrors();
 
             return ogc.ToString();
         }
@@ -128,12 +129,22 @@ namespace Manhood
         /// <returns></returns>
         public string GenerateTextFromPattern(ManRandom random, string patName)
         {
-            errorLog.Clear();
             var ogc = new OutputGroup();
 
-            Interpret(random, ogc, patternBank[patName].Body);
+            Interpret(random, ogc, _patternBank[patName].Body);
+            CheckForErrors();
 
             return ogc.ToString();
+        }
+
+        /// <summary>
+        /// Generates an output group from a pattern string.
+        /// </summary>
+        /// <param name="pattern">The pattern to interpret.</param>
+        /// <returns></returns>
+        public OutputGroup GenerateOutputGroup(string pattern)
+        {
+            return GenerateOutputGroup(new ManRandom(), pattern);
         }
 
         /// <summary>
@@ -144,10 +155,10 @@ namespace Manhood
         /// <returns></returns>
         public OutputGroup GenerateOutputGroup(ManRandom random, string pattern)
         {
-            errorLog.Clear();
             var ogc = new OutputGroup();
 
             Interpret(random, ogc, pattern);
+            CheckForErrors();
 
             return ogc;
         }
@@ -160,10 +171,10 @@ namespace Manhood
         /// <returns></returns>
         public OutputGroup GenerateOutputGroupFromPattern(ManRandom random, string patName)
         {
-            errorLog.Clear();
             var ogc = new OutputGroup();
 
-            Interpret(random, ogc, patternBank[patName].Body);
+            Interpret(random, ogc, _patternBank[patName].Body);
+            CheckForErrors();
 
             return ogc;
         }
@@ -184,9 +195,9 @@ namespace Manhood
         /// <param name="flagName">The name of the flag.</param>
         public void SetGlobalFlag(string flagName)
         {
-            if (!flagsGlobal.Contains(flagName))
+            if (!_flagsGlobal.Contains(flagName))
             {
-                flagsGlobal.Add(flagName);
+                _flagsGlobal.Add(flagName);
             }
         }
 
@@ -196,9 +207,9 @@ namespace Manhood
         /// <param name="flagName">The name of the flag.</param>
         public void UnsetGlobalFlag(string flagName)
         {
-            if (flagsGlobal.Contains(flagName))
+            if (_flagsGlobal.Contains(flagName))
             {
-                flagsGlobal.Remove(flagName);
+                _flagsGlobal.Remove(flagName);
             }
         }
 
@@ -209,38 +220,34 @@ namespace Manhood
         /// <returns></returns>
         public bool CheckGlobalFlag(string flagName)
         {
-            return flagsGlobal.Contains(flagName);
+            return _flagsGlobal.Contains(flagName);
         }
 
         #region Non-public methods
 
         private void Load(string packPath)
         {
-            using (EasyReader reader = new EasyReader(packPath))
+            using (var reader = new EasyReader(packPath))
             {
-                ContentType type;
                 while (!reader.EndOfStream)
                 {
-                    switch (type = (ContentType)reader.ReadByte())
+                    switch ((ContentType)reader.ReadByte())
                     {
                         case ContentType.DefTable:
                             {
-                                int count = reader.ReadInt32();
-                                for (int i = 0; i < count; i++)
+                                var count = reader.ReadInt32();
+                                for (var i = 0; i < count; i++)
                                 {
-                                    DefinitionType defType = reader.ReadEnum<DefinitionType>();
-                                    string title = reader.ReadString();
-                                    string[] parameters = reader.ReadStringArray();
-                                    string body = reader.ReadString();
-                                    bool valid = true;
+                                    var defType = reader.ReadEnum<DefinitionType>();
+                                    var title = reader.ReadString();
+                                    var parameters = reader.ReadStringArray();
+                                    var body = reader.ReadString();
+                                    var valid = true;
 
-                                    foreach(string p in parameters)
+                                    foreach (var p in parameters.Where(p => !Definition.IsValidName(p)))
                                     {
-                                        if (!Definition.IsValidName(p))
-                                        {
-                                            Console.WriteLine("Failed to load def '{0}': Invalid parameter name '{1}': Names must be at least 1 character long and can only contain letters, numbers, dashes and underscores.");
-                                            valid = false;
-                                        }
+                                        Console.WriteLine("Failed to load def '{0}': Invalid parameter name '{1}': Names must be at least 1 character long and can only contain letters, numbers, dashes and underscores.", title, p);
+                                        valid = false;
                                     }
 
                                     if (!valid)
@@ -248,11 +255,11 @@ namespace Manhood
                                         continue;
                                     }
 
-                                    if (!defBank.ContainsKey(title))
+                                    if (!_defBank.ContainsKey(title))
                                     {
                                         try
                                         {
-                                            defBank.Add(title, new Definition(defType, title, body, parameters.ToList()));
+                                            _defBank.Add(title, new Definition(defType, title, body, parameters.ToList()));
                                         }
                                         catch(Exception ex)
                                         {
@@ -268,11 +275,11 @@ namespace Manhood
                             break;
                         case ContentType.Pattern:
                             {
-                                string title = reader.ReadString();
-                                string body = reader.ReadString();
-                                if (!patternBank.ContainsKey(title))
+                                var title = reader.ReadString();
+                                var body = reader.ReadString();
+                                if (!_patternBank.ContainsKey(title))
                                 {
-                                    patternBank.Add(title, new Pattern(title, body));
+                                    _patternBank.Add(title, new Pattern(title, body));
                                 }
                                 else
                                 {
@@ -282,10 +289,10 @@ namespace Manhood
                             break;
                         case ContentType.Vocabulary:
                             {
-                                WordList list = WordList.LoadModernList(reader);
-                                if (!wordBank.ContainsKey(list.Symbol))
+                                var list = WordList.LoadModernList(reader);
+                                if (!_wordBank.ContainsKey(list.Symbol))
                                 {
-                                    wordBank.Add(list.Symbol, list);
+                                    _wordBank.Add(list.Symbol, list);
                                 }
                                 else
                                 {
@@ -298,60 +305,38 @@ namespace Manhood
             }
         }
 
+        private void CheckForErrors()
+        {
+            if (Errors != null && Middleman.State.Errors.Count > 0)
+            {
+                Errors(this, new ManhoodErrorEventArgs(Middleman.State.Errors));
+            }
+        }
+
         private bool ClassExists(char symbol, string className)
         {
-            return wordBank[symbol].Classes.ContainsKey(className) || className == "";
-        }
-
-        private void Error(string problem, CharReader reader)
-        {
-            int col;
-            int line = reader.Source.GetLineNumberFromIndex(reader.Position, out col);
-            errorLog.AppendFormat("ERROR (Line {0}, Col {1}): {2}\n", line, col, problem);
-        }
-
-        private void Warning(string problem, CharReader reader)
-        {
-            int col;
-            int line = reader.Source.GetLineNumberFromIndex(reader.Position, out col);
-            errorLog.AppendFormat("WARNING (Line {0}, Col {1}): {2}\n", line, col, problem);
+            return _wordBank[symbol].Classes.ContainsKey(className) || className == "";
         }
 
         private void SetLocalFlag(string flagName)
         {
-            if (!flagsLocal.Contains(flagName))
+            if (!_flagsLocal.Contains(flagName))
             {
-                flagsLocal.Add(flagName);
+                _flagsLocal.Add(flagName);
             }
         }
 
         private void UnsetLocalFlag(string flagName)
         {
-            if (flagsLocal.Contains(flagName))
+            if (_flagsLocal.Contains(flagName))
             {
-                flagsLocal.Remove(flagName);
+                _flagsLocal.Remove(flagName);
             }
         }
 
         private bool CheckLocalFlag(string flagName)
         {
-            return flagsLocal.Contains(flagName);
-        }
-
-        private void ChangeWeights(ManRandom rand, int distSelect)
-        {
-            foreach (KeyValuePair<char, WordList> kvp in wordBank)
-            {
-                kvp.Value.RandomizeDistWeights(rand, distSelect);
-            }
-        }
-
-        private void CheckPatternType(string type)
-        {
-            if (!patternBank.ContainsKey(type))
-            {
-                throw new Exception("Required pattern list is missing: " + type);
-            }
+            return _flagsLocal.Contains(flagName);
         }
 
         #endregion

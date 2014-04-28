@@ -23,7 +23,7 @@ namespace Manhood
         /// <param name="patterns">The patterns to pack.</param>
         public static void PackToFile(string path, IEnumerable<Definition> defs, IEnumerable<WordList> vocab, IEnumerable<Pattern> patterns)
         {
-            using(EasyWriter writer = new EasyWriter(path))
+            using(var writer = new EasyWriter(path))
             {
                 // Write defs
                 writer.Write(ContentType.DefTable);
@@ -62,12 +62,11 @@ namespace Manhood
         /// <param name="patterns">The list to unpack patterns to.</param>
         public static void Unpack(string path, List<Definition> defs, List<WordList> vocab, List<Pattern> patterns)
         {
-            using (EasyReader reader = new EasyReader(path))
+            using (var reader = new EasyReader(path))
             {
-                ContentType type;
                 while(!reader.EndOfStream)
                 {
-                    switch (type = (ContentType)reader.ReadByte())
+                    switch ((ContentType)reader.ReadByte())
                     {
                         case ContentType.DefTable:
                             {
@@ -75,9 +74,9 @@ namespace Manhood
                                 for(int i = 0; i < count; i++)
                                 {
                                     var defType = (DefinitionType)reader.ReadByte();
-                                    string name = reader.ReadString();
-                                    string[] parameters = reader.ReadStringArray();
-                                    string body = reader.ReadString();
+                                    var name = reader.ReadString();
+                                    var parameters = reader.ReadStringArray();
+                                    var body = reader.ReadString();
                                     if (Definition.IsValidName(name))
                                     {
                                         defs.Add(new Definition(defType, name, body, parameters.ToList()));
@@ -87,8 +86,8 @@ namespace Manhood
                             break;
                         case ContentType.Pattern:
                             {
-                                string title = reader.ReadString();
-                                string body = reader.ReadString();
+                                var title = reader.ReadString();
+                                var body = reader.ReadString();
                                 patterns.Add(new Pattern(title, body));
                             }
                             break;
@@ -109,39 +108,34 @@ namespace Manhood
         /// <param name="newPackPath">The path at which to save the converted file.</param>
         public static void ConvertPack(string oldPackPath, string newPackPath)
         {
-            using(BinaryReader reader = new BinaryReader(File.Open(oldPackPath, FileMode.Open)))
+            using(var reader = new BinaryReader(File.Open(oldPackPath, FileMode.Open)))
             {
                 reader.ReadUInt32(); // magic
                 reader.ReadLongString();
                 reader.ReadLongString();
                 reader.ReadLongString();
 
-                List<Definition> defs = new List<Definition>();
+                var defs = new List<Definition>();
 
                 if (reader.ReadBoolean()) // macros
                 {
-                    string[] raw = reader.ReadStringArray();
-                    foreach(string entry in raw)
-                    {
-                        var match = Regex.Match(entry, @"(?<key>.+)::(?<value>.+)", RegexOptions.ExplicitCapture);
-                        if (match.Success)
-                        {
-                            defs.Add(new Definition(DefinitionType.Macro, match.Groups["key"].Value, match.Groups["value"].Value));
-                        }
-                    }
+                    var raw = reader.ReadStringArray();
+                    defs.AddRange(
+                        from entry in raw 
+                        select Regex.Match(entry, @"(?<key>.+)::(?<value>.+)", RegexOptions.ExplicitCapture)
+                        into match
+                        where match.Success
+                        select new Definition(DefinitionType.Macro, match.Groups["key"].Value, match.Groups["value"].Value));
                 }
 
                 if (reader.ReadBoolean()) // globals
                 {
                     string[] raw = reader.ReadStringArray();
-                    foreach (string entry in raw)
-                    {
-                        var match = Regex.Match(entry, @"(?<key>.+)::(?<value>.+)", RegexOptions.ExplicitCapture);
-                        if (match.Success)
-                        {
-                            defs.Add(new Definition(DefinitionType.Global, match.Groups["key"].Value, match.Groups["value"].Value));
-                        }
-                    }
+                    defs.AddRange(from entry in raw 
+                                  select Regex.Match(entry, @"(?<key>.+)::(?<value>.+)", RegexOptions.ExplicitCapture)
+                                  into match
+                                  where match.Success
+                                  select new Definition(DefinitionType.Global, match.Groups["key"].Value, match.Groups["value"].Value));
                 }
 
                 if (reader.ReadBoolean()) // outlines (ignore)
@@ -160,7 +154,7 @@ namespace Manhood
                     }
                 }
 
-                List<WordList> vocab = new List<WordList>();
+                var vocab = new List<WordList>();
 
                 if (reader.ReadBoolean()) // vocab
                 {
@@ -176,7 +170,7 @@ namespace Manhood
                     }
                 }
 
-                List<Pattern> pats = new List<Pattern>();
+                var pats = new List<Pattern>();
 
                 if (reader.ReadBoolean()) // patterns
                 {
@@ -186,9 +180,9 @@ namespace Manhood
                     {
                         reader.ReadLongString();
 
-                        char ch = reader.ReadChar();
-                        string symbol = ch.ToString();
-                        string title = reader.ReadLongString();
+                        var ch = reader.ReadChar();
+                        var symbol = ch.ToString();
+                        var title = reader.ReadLongString();
 
                         pats.AddRange(reader.ReadStringArray().Select<string, Pattern>((str, index) => new Pattern(String.Format("{0}_{1:D4}", symbol, index), str)));
 
