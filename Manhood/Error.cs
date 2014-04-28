@@ -61,7 +61,15 @@ namespace Manhood
             _col = col;
             _index = index;
             _errType = type;
-            _message = String.Format(msg, args);
+            try
+            {
+                _message = String.Format(msg, args);
+            }
+            catch (Exception ex)
+            {
+                _message = msg;
+            }
+            
         }
 
         /// <summary>
