@@ -15,11 +15,12 @@ namespace Manhood
         /// </summary>
         public event EventHandler<ManhoodErrorEventArgs> Errors;
 
-        Dictionary<char, WordList> _wordBank;
-        Dictionary<string, Pattern> _patternBank;
-        Dictionary<string, Definition> _defBank;
-        Dictionary<string, Func<ManRandom, string>> _customFuncs;
-        List<string> _flagsGlobal, _flagsLocal;
+        private Dictionary<char, WordList> _wordBank;
+        private Dictionary<string, Pattern> _patternBank;
+        private Dictionary<string, Definition> _defBank;
+        private Dictionary<string, Func<ManRandom, string>> _customFuncs;
+        private List<string> _flagsGlobal, _flagsLocal;
+        private List<EngineState> _activeStates = new List<EngineState>(); 
 
         /// <summary>
         /// Initializes a new instance of the Manhood.ManEngine class and loads the content at the specified path.
@@ -90,7 +91,7 @@ namespace Manhood
             foreach (var entry in _defBank)
             {
                 var ogc = new OutputGroup();
-                Interpret(rand, ogc, entry.Value.Body);
+                InterpretAndCheck(rand, ogc, entry.Value.Body);
                 entry.Value.State = ogc.ToString();
             }
         }
@@ -115,8 +116,7 @@ namespace Manhood
         {
             var ogc = new OutputGroup();
 
-            Interpret(random, ogc, pattern);
-            CheckForErrors();
+            InterpretAndCheck(random, ogc, pattern);
 
             return ogc.ToString();
         }
@@ -131,8 +131,7 @@ namespace Manhood
         {
             var ogc = new OutputGroup();
 
-            Interpret(random, ogc, _patternBank[patName].Body);
-            CheckForErrors();
+            InterpretAndCheck(random, ogc, _patternBank[patName].Body);
 
             return ogc.ToString();
         }
@@ -157,8 +156,7 @@ namespace Manhood
         {
             var ogc = new OutputGroup();
 
-            Interpret(random, ogc, pattern);
-            CheckForErrors();
+            InterpretAndCheck(random, ogc, pattern);
 
             return ogc;
         }
@@ -173,20 +171,9 @@ namespace Manhood
         {
             var ogc = new OutputGroup();
 
-            Interpret(random, ogc, _patternBank[patName].Body);
-            CheckForErrors();
+            InterpretAndCheck(random, ogc, _patternBank[patName].Body);
 
             return ogc;
-        }
-
-        /// <summary>
-        /// Expands the definitions used in the specified pattern and returns the result.
-        /// </summary>
-        /// <param name="pattern">The pattern to expand.</param>
-        /// <returns></returns>
-        public string Expand(string pattern)
-        {
-            return TranslateDefs(pattern);
         }
 
         /// <summary>
@@ -305,11 +292,11 @@ namespace Manhood
             }
         }
 
-        private void CheckForErrors()
+        private void CheckForErrors(EngineState state)
         {
-            if (Errors != null && Middleman.State.Errors.Count > 0)
+            if (Errors != null && state.Errors.Count > 0)
             {
-                Errors(this, new ManhoodErrorEventArgs(Middleman.State.Errors));
+                Errors(this, new ManhoodErrorEventArgs(state.Errors));
             }
         }
 
