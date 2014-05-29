@@ -37,9 +37,6 @@
     <DocumentationFile>bin\Release\Manhood.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="EasyIO">
-      <HintPath>..\..\EasyIO\EasyIO\bin\Release\EasyIO.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -77,6 +74,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ManEngine.Interpreter.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\EasyIO\EasyIO\EasyIO.csproj">
+      <Project>{0d65d21b-fb35-4f92-987c-4c9d5bfdc484}</Project>
+      <Name>EasyIO</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
